@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Ardalis.SmartEnum" Version="8.2.0" />
     <PackageReference Include="Grpc.AspNetCore" Version="2.80.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
     <PackageReference Include="MongoDB.Driver" Version="3.9.0" />
@@ -23,10 +24,17 @@
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.Grafana.Loki" Version="9.0.1" />
     <PackageReference Include="StackExchange.Redis" Version="3.0.11" />
+	  <!-- gRPC Proto dosyasını sunucu (Server) modunda kayıt ediyoruz.
+       "Server" = Bu servis, bu metotları SUNAN taraftır.
+       "Client" olsaydı bu metotları ÇAĞIRAN taraf olurdu (OrderService tarafında öyle olacak).
+       GrpcServices="Server" sayesinde .NET derleme sırasında
+       bu proto'dan abstract bir base class üretir ve biz onu implemente ederiz. -->
+	  <Protobuf Include="Protos\inventory.proto" GrpcServices="Server" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Protos\" />
+    <Folder Include="BackgroundJobs\" />
+    <Folder Include="Repositories\" />
     <Folder Include="Services\" />
   </ItemGroup>
 
