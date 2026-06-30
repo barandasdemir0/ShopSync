@@ -24,7 +24,21 @@ public static class TelemetryExtensions
             .Enrich.FromLogContext() //loglara context ekleme işlemi
             .Enrich.WithProperty("ApplicationName", serviceName) //uygulama adını loglara ekleme işlemi
             .WriteTo.Console()//konsola yazdırma işlemi
-             .WriteTo.GrafanaLoki(uri: lokiUrl );
+             .WriteTo.GrafanaLoki(uri: lokiUrl,
+             labels:
+             [
+                 new LokiLabel
+                 {
+                     Key = "application",
+                     Value = serviceName
+                 },
+                 new LokiLabel
+                 {
+                     Key = "environment",
+                     Value = builder.Environment.EnvironmentName
+                 }
+
+                 ]);
         });
 
         builder.Services.AddOpenTelemetry()
@@ -52,7 +66,7 @@ public static class TelemetryExtensions
                 });
             });
 
-           
+
 
 
     }
