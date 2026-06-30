@@ -1,5 +1,5 @@
 using ShopSync.InventoryService.Extension;
-using ShopSync.InventoryService.Infrastructure;
+using ShopSync.InventoryService.Infrastructure.Exceptions;
 
 var builder = WebApplication.CreateBuilder(args);
 

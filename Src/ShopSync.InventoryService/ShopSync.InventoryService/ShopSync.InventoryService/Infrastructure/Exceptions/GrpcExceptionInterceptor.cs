@@ -2,7 +2,7 @@
 using Grpc.Core.Interceptors;
 using ShopSync.InventoryService.Exceptions;
 
-namespace ShopSync.InventoryService.Infrastructure;
+namespace ShopSync.InventoryService.Infrastructure.Exceptions;
 
 public sealed class GrpcExceptionInterceptor : Interceptor
 {
