@@ -1,0 +1,46 @@
+services:
+  shopsync.inventoryservice:
+    image: ${DOCKER_REGISTRY-}shopsyncinventoryservice
+    build:
+      context: .
+      dockerfile: ShopSync.InventoryService/Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Loki__Url=http://loki:3100
+      - Otlp__Endpoint=http://jaeger:4317
+    depends_on:
+      - loki
+      - prometheus
+      - jaeger
+  # ---- LOKI (Log Deposu) ----
+  loki:
+    image: grafana/loki:latest
+    container_name: shopsync-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+  # ---- PROMETHEUS (Metrik Deposu) ----
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: shopsync-prometheus
+    ports:
+      - "9090:9090"
+  # ---- JAEGER (Tracing - İzleme) ----
+  jaeger:
+    image: jaegertracing/all-in-one:1.54
+    container_name: shopsync-jaeger
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+  # ---- GRAFANA (Görselleştirme Arayüzü) ----
+  grafana:
+    image: grafana/grafana:latest
+    container_name: shopsync-grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+      - prometheus
+      - jaeger

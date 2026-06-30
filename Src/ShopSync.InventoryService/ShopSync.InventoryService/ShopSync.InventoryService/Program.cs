@@ -1,14 +1,26 @@
-using ShopSync.InventoryService.Services;
+using ShopSync.InventoryService.Extension;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+#region extension tanımlamaları
+
+builder.AddMonitoring();
+
+
+
+#endregion
+
+//grpc service
 builder.Services.AddGrpc();
 
 var app = builder.Build();
 
+//
+app.UseMonitoring();
+
+
 // Configure the HTTP request pipeline.
-app.MapGrpcService<GreeterService>();
-app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
+
+app.MapGet("/", () => "ShopSync InventoryService is running.");
 
 app.Run();
