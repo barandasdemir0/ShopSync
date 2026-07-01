@@ -15,6 +15,15 @@ service InventoryGrpc
 
 	//  Belirli bir stok bilgisini getirir
 	rpc GetStock(GetStockRequest) returns (GetStockResponse);
+
+	//stok artırma işlemi
+	rpc IncreaseStock(IncreaseStockRequest) returns (StockOperationResponse);
+
+	//stok azaltma işlemi
+	rpc DecreaseStock(DecreaseStockRequest) returns (StockOperationResponse);
+
+	//rezervasyon onaylama ödeme başarılı olduğunda çağırılır
+	rpc ConfirmReservation(ConfirmReservationRequest) returns (StockOperationResponse);
 }
 
 
@@ -84,6 +93,31 @@ message GetStockResponse
 }
 
 
+message IncreaseStockRequest
+{
+	string sku = 1; // Ürün kodu
+	int32 quantity = 2; // Artırılacak miktar
+	string reason = 3; // Artırma nedeni
+}
+
+message DecreaseStockRequest
+{
+	string sku = 1; // Ürün kodu
+	int32 quantity = 2; // Azaltılacak miktar
+	string reason = 3; // Azaltma nedeni
+}
+
+message ConfirmReservationRequest
+{
+	string order_id = 1; // Sipariş ID'si
+	repeated ReservationItem items = 2; // Onaylanacak rezervasyon ürünleri
+}
+
+message StockOperationResponse
+{
+	bool success = 1; // İşlem başarılı mı?
+	string message = 2; // İşlemle ilgili mesaj
+}
 
 
 

@@ -55,7 +55,7 @@ public sealed partial class InventoryGrpcService
                 .Select(item => new FailedItem
                 {
                     Sku = item.OriginalSku,
-                    AvailableQuantity = inventoryMap[item.NormalizedSku].QuantityAvailable,
+                    AvailableQuantity = inventoryMap[item.NormalizedSku].QuantityAvailable, // mevcut stok miktarı
                     RequestedQuantity = item.TotalQuantity,
                     Reason = "Serbest bırakılacak kadar rezervasyon yok"
                 })
@@ -145,14 +145,7 @@ public sealed partial class InventoryGrpcService
                 Message = $"Kilit alınamadı: {ex.Message}"
             };
         }
-        catch (Exception ex)
-        {
-
-            _logger.LogError(ex,
-               "ReleaseBatch beklenmeyen hata. OrderId: {OrderId}", request.OrderId);
-            throw new RpcException(
-                new Status(StatusCode.Internal, $"Sunucu hatası: {ex.Message}"));
-        }
+       
 
     }
 

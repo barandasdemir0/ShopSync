@@ -152,13 +152,6 @@ public sealed partial class InventoryGrpcService
                 Message = $"Kilit alınamadı: {ex.Message}"
             };
         }
-        catch (Exception ex)
-        {
-            // Beklenmeyen hata
-            _logger.LogError(ex,
-                "ReserveBatch beklenmeyen hata. OrderId: {OrderId}", request.OrderId);
-            throw new RpcException(
-                new Status(StatusCode.Internal, $"Sunucu hatası: {ex.Message}"));
-        }
+      
     }
 }

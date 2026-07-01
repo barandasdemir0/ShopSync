@@ -17,6 +17,10 @@ public sealed class InventoryTransactionType : SmartEnum<InventoryTransactionTyp
 
     public static readonly InventoryTransactionType Rebalance = new(nameof(Rebalance), 5, "REBALANCE", "Stok yeniden dengeleme");
 
+    public static readonly InventoryTransactionType Confirm = new(nameof(Confirm), 6, "CONFIRM", "Rezervasyon onaylama");
+
+    public static readonly InventoryTransactionType Expiration = new(nameof(Expiration), 7, "EXPIRATION", "Süresi dolmuş rezervasyon serbest bırakma");
+
     public string Code { get; }
     public string Description { get; }
 

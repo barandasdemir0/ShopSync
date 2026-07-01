@@ -1,5 +1,4 @@
 services:
-  # ---- BİZİM SERVİSİMİZ ----
   shopsync.inventoryservice:
     image: ${DOCKER_REGISTRY-}shopsyncinventoryservice
     build:
