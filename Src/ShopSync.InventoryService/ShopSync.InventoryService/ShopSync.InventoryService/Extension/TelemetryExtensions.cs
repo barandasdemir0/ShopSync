@@ -8,7 +8,7 @@ namespace ShopSync.InventoryService.Extension;
 
 public static class TelemetryExtensions
 {
-    public static void AddMonitoring(this WebApplicationBuilder builder)
+    public static WebApplicationBuilder AddMonitoring(this WebApplicationBuilder builder)
     {
         var serviceName = builder.Environment.ApplicationName;
 
@@ -23,6 +23,10 @@ public static class TelemetryExtensions
             configuration.ReadFrom.Configuration(context.Configuration) //appsettings.json dosyasındaki log ayarlarını okuma işlemi
             .Enrich.FromLogContext() //loglara context ekleme işlemi
             .Enrich.WithProperty("ApplicationName", serviceName) //uygulama adını loglara ekleme işlemi
+            .Enrich.WithProperty("Environment", builder.Environment.EnvironmentName)
+            .WriteTo.File(
+                    "Logs/inventory-service-.txt",
+                    rollingInterval: RollingInterval.Day)
             .WriteTo.Console()//konsola yazdırma işlemi
              .WriteTo.GrafanaLoki(uri: lokiUrl,
              labels:
@@ -68,12 +72,14 @@ public static class TelemetryExtensions
 
 
 
-
+        return builder;
     }
 
-    public static void UseMonitoring(this WebApplication app)
+    public static WebApplication UseMonitoring(this WebApplication app)
     {
         app.UseSerilogRequestLogging();
         app.UseOpenTelemetryPrometheusScrapingEndpoint();
+
+        return app;
     }
 }

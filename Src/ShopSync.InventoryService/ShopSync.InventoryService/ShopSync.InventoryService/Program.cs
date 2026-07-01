@@ -1,30 +1,55 @@
+using Serilog;
 using ShopSync.InventoryService.Extension;
-using ShopSync.InventoryService.Infrastructure.Exceptions;
+using ShopSync.InventoryService.Services;
 
-var builder = WebApplication.CreateBuilder(args);
 
-#region extension tanımlamaları
-// AddMonitoring extension methodunu kullanarak uygulamaya monitoring özelliklerini ekliyoruz.
-builder.AddMonitoring();
-//addgrpc exception interceptor ile gRPC servislerinde oluşabilecek hataları merkezi bir şekilde yakalayıp yönetiyoruz.
-builder.Services.AddGrpc(options =>
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+
+try
 {
-    options.Interceptors.Add<GrpcExceptionInterceptor>();
-});
+    Log.Information("ShopSync InventoryService başlatılıyor...");
+
+    var builder = WebApplication.CreateBuilder(args);
+
+    #region extension tanımlamaları
+
+  
+
+    builder.AddAppConfigurations();
+    builder.AddGrpcServices();
+    builder.AddInfrastructureServices();
+    builder.AddMonitoring();
 
 
-#endregion
+    #endregion
 
 
 
-var app = builder.Build();
+    var app = builder.Build();
 
-//
-app.UseMonitoring();
+    
+    app.UseMonitoring();
 
 
-// Configure the HTTP request pipeline.
+    app.MapGrpcService<InventoryGrpcService>();
 
-app.MapGet("/", () => "ShopSync InventoryService is running.");
+    // Configure the HTTP request pipeline.
 
-app.Run();
+    app.MapGet("/", () => "ShopSync InventoryService is running.");
+
+    app.Run();
+}
+catch (Exception ex)
+{
+
+    Log.Fatal(ex, "ShopSync InventoryService başlatılırken kritik hata oluştu.");
+}
+
+finally
+{
+    Log.CloseAndFlush();
+}
+
+
