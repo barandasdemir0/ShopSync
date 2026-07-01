@@ -107,6 +107,26 @@ public sealed class InventoryItem
         }
     }
 
+    public bool CanRelease(int quantity)
+    {
+        // Miktar sıfırdan büyükse ve rezerve edilmiş stokta yeterince varsa serbest bırakılabilir.
+        if (quantity > 0)
+        {
+            if (QuantityReserved >= quantity)
+            {
+                return true; // Hem sıfırdan büyük hem de rezerve edilmiş stokta yeterince var
+            }
+            else
+            {
+                return false; // Sıfırdan büyük ama rezerve edilmiş stokta o kadar yok
+            }
+        }
+        else
+        {
+            return false; // Miktar sıfır veya daha küçük
+        }
+    }
+
     // Bu metot, belirtilen miktarda stok rezervasyonu yapar.
     public void Reserve(int quantity)
     {
