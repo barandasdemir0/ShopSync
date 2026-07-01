@@ -42,7 +42,7 @@ public sealed class InventoryRepository : IInventoryRepository
     // SKU'ya göre envanter öğesini getir.
     public async Task<InventoryItem?> GetBySkuAsync(string sku, CancellationToken ct = default)
     {
-        
+
         if (string.IsNullOrWhiteSpace(sku))
         {
             throw new ArgumentException("SKU boş bırakılamaz.", nameof(sku));
@@ -77,11 +77,49 @@ public sealed class InventoryRepository : IInventoryRepository
         }
 
         // MongoDB'de SKU'ya göre envanter öğelerini getir.
-        var filter = Builders<InventoryItem>.Filter.In(x => x.Sku, normalizedSkus); 
+        var filter = Builders<InventoryItem>.Filter.In(x => x.Sku, normalizedSkus);
 
         return await _context.InventoryItems
             .Find(filter)
             .ToListAsync(ct);
+    }
+
+    // Belirtilen expirationThreshold tarihinden önce oluşturulmuş, süresi dolmuş rezervasyon transaction loglarını getirir.
+    public async Task<List<InventoryTransactionLog>> GetExpiredReservationLogsAsync(DateTime expirationThreshold, CancellationToken ct = default)
+    {
+
+        // MongoDB'de süresi dolmuş rezervasyon transaction loglarını getir.
+        var reserveLogs = await FetchExpiredReserveLogsAsync(expirationThreshold, ct);
+
+        // Eğer süresi dolmuş rezervasyon transaction logları yoksa, boş bir liste döndür.
+        if (reserveLogs.Count == 0)
+        {
+            return new List<InventoryTransactionLog>();
+        }
+        // Süresi dolmuş rezervasyon transaction loglarından, OrderId'si olanları filtrele ve distinct olarak al.
+        var orderIds = reserveLogs
+            .Where(x => !string.IsNullOrWhiteSpace(x.OrderId))
+            .Select(x => x.OrderId!)
+            .Distinct()
+            .ToList();
+
+        if (orderIds.Count == 0)
+        {
+            return new List<InventoryTransactionLog>();
+        }
+
+        // Belirli bir sipariş ID listesi için tamamlanmış transaction loglarını getir.
+        var completedOrderIds = await FetchCompletedOrderIdsAsync(orderIds, ct);
+
+
+        // Süresi dolmuş rezervasyon transaction loglarından, tamamlanmamış olanları filtrele ve liste olarak döndür.
+        return reserveLogs
+            .Where(x =>
+                !string.IsNullOrWhiteSpace(x.OrderId) &&
+                !completedOrderIds.Contains(x.OrderId!))
+            .ToList();
+
+
     }
 
     public async Task<List<InventoryItem>> GetLowStockItemsAsync(CancellationToken ct = default)
@@ -134,5 +172,46 @@ public sealed class InventoryRepository : IInventoryRepository
         {
             await _context.InventoryItems.ReplaceOneAsync(filter, item, cancellationToken: ct);
         }
+    }
+
+    // Bu metod, belirli bir tarihten önce oluşturulmuş ve süresi dolmuş rezervasyon transaction loglarını getirir.
+    private async Task<List<InventoryTransactionLog>> FetchExpiredReserveLogsAsync(DateTime expirationThreshold, CancellationToken ct)
+    {
+        return await _context.TransactionLogs
+           .Find(x =>
+               x.TransactionType == InventoryTransactionType.Reserve.Code &&
+               x.Timestamp < expirationThreshold)
+           .ToListAsync(ct);
+    }
+
+    // Belirli sipariş ID'leri için CONFIRM, RELEASE veya EXPIRATION işlemi olan OrderId'leri getirir.
+    private async Task<HashSet<string>> FetchCompletedOrderIdsAsync(List<string> orderIds, CancellationToken ct)
+    {
+        var completedTypes = new[]
+   {
+        InventoryTransactionType.Confirm.Code,
+        InventoryTransactionType.Release.Code,
+        InventoryTransactionType.Expiration.Code
+    };
+
+        var completedList = await _context.TransactionLogs
+            .Find(x =>
+                x.OrderId != null &&
+                orderIds.Contains(x.OrderId) &&
+                completedTypes.Contains(x.TransactionType))
+            .Project(x => x.OrderId)
+            .ToListAsync(ct);
+
+        return completedList
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x!)
+            .ToHashSet();
+    }
+
+    public async Task<List<InventoryItem>> GetAllItemsAsync(CancellationToken ct = default)
+    {
+        // MongoDB'deki tüm envanter öğelerini getir. filtre yok
+        return await _context.InventoryItems
+        .Find(Builders<InventoryItem>.Filter.Empty).ToListAsync(ct);
     }
 }

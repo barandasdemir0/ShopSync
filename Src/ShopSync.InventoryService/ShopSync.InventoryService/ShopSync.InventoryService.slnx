@@ -1,6 +1,0 @@
-<Solution>
-  <Project Path="../ShopSync.InventoryService.csproj" />
-  <Project Path="docker-compose.dcproj">
-    <Build />
-  </Project>
-</Solution>

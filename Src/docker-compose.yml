@@ -16,6 +16,11 @@ services:
       - MongoDbSettings__ConnectionString=mongodb://mongodb:27017
       - MongoDbSettings__DatabaseName=shopSync_inventory
       - RedisSettings__ConnectionString=redis:6379
+      # YENİ: BackgroundJob ayarları
+      - ExpirationJobSettings__IntervalMinutes=2
+      - ExpirationJobSettings__ExpirationMinutes=10
+      - ReconciliationJobSettings__IntervalMinutes=60
+      - LowStockAlertSettings__IntervalMinutes=5  
     depends_on:
       - mongodb
       - redis

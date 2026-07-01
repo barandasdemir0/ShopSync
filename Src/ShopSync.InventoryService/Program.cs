@@ -21,6 +21,8 @@ try
     builder.AddGrpcServices();
     builder.AddInfrastructureServices();
     builder.AddMonitoring();
+    builder.AddHealthCheckServices();   
+    builder.AddBackgroundJobs();       
 
 
     #endregion
@@ -31,6 +33,7 @@ try
 
     
     app.UseMonitoring();
+    app.UseHealthCheckEndpoints();
 
 
     app.MapGrpcService<InventoryGrpcService>();
