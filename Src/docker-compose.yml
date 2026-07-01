@@ -1,9 +1,10 @@
 services:
+  # ---- BİZİM SERVİSİMİZ ----
   shopsync.inventoryservice:
     image: ${DOCKER_REGISTRY-}shopsyncinventoryservice
     build:
-      context: .
-      dockerfile: ShopSync.InventoryService/Dockerfile # Dockerfile servisin içinde olmalı
+      context: ..
+      dockerfile: ShopSync.InventoryService/Dockerfile # Üst klasöre çıkıp InventoryService'e girer
     container_name: shopsync-inventory
     ports:
       - "5001:5001"
