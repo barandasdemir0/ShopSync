@@ -1,5 +1,6 @@
 ﻿using ShopSync.InventoryService.BackgroundJobs;
 using ShopSync.InventoryService.Configuration;
+using ShopSync.InventoryService.Infrastructure.Persistence;
 
 namespace ShopSync.InventoryService.Extension;
 
@@ -18,9 +19,13 @@ public static class BackgroundJobExtensions
         builder.Services.Configure<LowStockAlertSettings>(
             builder.Configuration.GetSection("LowStockAlertSettings"));
 
+
+
         builder.Services.AddHostedService<ReservationExpirationJob>();
         builder.Services.AddHostedService<StockReconciliationJob>();
         builder.Services.AddHostedService<LowStockAlertJob>();
+        builder.Services.AddHostedService<MongoDbIndexInitializer>();
+
         return builder;
     }
 }
