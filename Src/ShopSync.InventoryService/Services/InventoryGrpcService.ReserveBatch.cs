@@ -46,6 +46,7 @@ public sealed partial class InventoryGrpcService
             if (missingSkus.Count > 0)
             {
                 _logger.LogWarning("ReserveBatch başarısız. Bulunamayan SKU'lar: {Skus}", string.Join(", ", missingSkus));
+                _metrics.ReservationsFailed.Add(1);
                 return new ReserveBatchResponse
                 {
                     Success = false,
@@ -67,6 +68,7 @@ public sealed partial class InventoryGrpcService
             if (failedItems.Count > 0)
             {
                 _logger.LogWarning("ReserveBatch başarısız. Yetersiz stok: {Count} ürün", failedItems.Count);
+                _metrics.ReservationsFailed.Add(1);
                 return new ReserveBatchResponse
                 {
                     Success = false,
@@ -120,6 +122,8 @@ public sealed partial class InventoryGrpcService
 
                 // Tüm güncellemeler başarılı → Transaction'ı onayla (commit)
                 await session.CommitTransactionAsync(context.CancellationToken);
+                _metrics.ReservationsCompleted.Add(1);
+
                 _logger.LogInformation(
                     "ReserveBatch başarılı. OrderId: {OrderId}", request.OrderId);
                 return new ReserveBatchResponse
@@ -143,6 +147,7 @@ public sealed partial class InventoryGrpcService
         }
         catch (TimeoutException ex)
         {
+            _metrics.ReservationsFailed.Add(1);
             // Distributed Lock alınamadı (tüm denemeler tükendi)
             _logger.LogError(ex,
                 "ReserveBatch lock zaman aşımı. OrderId: {OrderId}", request.OrderId);

@@ -114,6 +114,8 @@ public sealed partial class InventoryGrpcService
                 }
 
                 await session.CommitTransactionAsync(context.CancellationToken);
+                _metrics.ReservationsConfirmed.Add(1);
+
                 _logger.LogInformation(
                     "ConfirmReservation başarılı. OrderId: {OrderId}", request.OrderId);
 

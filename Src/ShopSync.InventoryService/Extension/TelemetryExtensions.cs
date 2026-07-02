@@ -64,10 +64,12 @@ public static class TelemetryExtensions
                 metrics.AddAspNetCoreInstrumentation()
                 .AddRuntimeInstrumentation()
                 .AddPrometheusExporter()
+                .AddMeter("ShopSync.InventoryService")
                 .AddOtlpExporter(options =>
                 {
                     options.Endpoint = new Uri(otlpEndpoint);
                 });
+
             });
 
 
