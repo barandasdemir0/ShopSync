@@ -29,6 +29,10 @@ public sealed class MongoDbContext
     public IMongoCollection<InventoryTransactionLog> TransactionLogs
       => _database.GetCollection<InventoryTransactionLog>("transaction_logs");
 
+    // Expiration job'ının checkpoint bilgilerinin tutulduğu collection.
+    public IMongoCollection<ExpirationCheckpoint> ExpirationCheckpoints
+        => _database.GetCollection<ExpirationCheckpoint>("expiration_checkpoints");
+
     //MongoDB Client nesnesini döner.
     public IMongoClient Client => _client;
 }

@@ -214,4 +214,55 @@ public sealed class InventoryRepository : IInventoryRepository
         return await _context.InventoryItems
         .Find(Builders<InventoryItem>.Filter.Empty).ToListAsync(ct);
     }
+
+    public async Task<bool> IsOrderAlreadyCompletedAsync(string orderId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(orderId))
+        {
+            return false;
+        }
+
+        // Tamamlanmış sayılan işlem tipleri
+        var completedTypes = new[]
+        {
+            InventoryTransactionType.Confirm.Code,
+            InventoryTransactionType.Release.Code,
+            InventoryTransactionType.Expiration.Code
+        };
+
+        //  sipariş ID'si için tamamlanmış transaction loglarının sayısını al.
+        var count = await _context.TransactionLogs
+            .CountDocumentsAsync(
+           x => x.OrderId == orderId && completedTypes.Contains(x.TransactionType),
+           cancellationToken: ct);
+        return count > 0;
+
+    }
+
+    public async Task<ExpirationCheckpoint?> GetCheckpointAsync(string jobName, CancellationToken ct = default)
+    {
+        return await _context.ExpirationCheckpoints
+            .Find(x => x.JobName == jobName)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task SaveCheckpointAsync(string jobName, DateTime lastProcessedThreshold, CancellationToken ct = default)
+    {
+        // Mevcut checkpoint'i bul
+        var existing = await GetCheckpointAsync(jobName, ct);
+        if (existing is null)
+        {
+            //  Yeni checkpoint oluştur
+            var checkpoint = new ExpirationCheckpoint(jobName, lastProcessedThreshold);
+            await _context.ExpirationCheckpoints.InsertOneAsync(checkpoint, cancellationToken: ct);
+        }
+        else
+        {
+            //  DDD metodu ile güncelle ve MongoDB'ye yaz
+            existing.Update(lastProcessedThreshold);
+            //filter ile Id'si eşleşen kaydı bul ve güncelle
+            var filter = Builders<ExpirationCheckpoint>.Filter.Eq(x => x.Id, existing.Id);
+            await _context.ExpirationCheckpoints.ReplaceOneAsync(filter, existing, cancellationToken: ct);
+        }
+    }
 }

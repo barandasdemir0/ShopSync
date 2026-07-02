@@ -70,15 +70,29 @@ public sealed class ReservationExpirationJob : BackgroundService
         var dbContext = scope.ServiceProvider.GetRequiredService<MongoDbContext>();
         var lockService = scope.ServiceProvider.GetRequiredService<IDistributedLockService>();
 
-       
+
+        // Checkpoint mekanizması: Son başarılı tarama zamanını oku
+        var checkpoint = await repository.GetCheckpointAsync("ReservationExpirationJob", ct);
+
         // Rezervasyonların geçerli kalacağı süre.
-        // Örneğin: 10 dakika
         var reservationLifetime = TimeSpan.FromMinutes(_settings.ExpirationMinutes);
 
         // Bu tarihten daha eski rezervasyonlar süresi dolmuş kabul edilir.
-        // Örneğin şu an 12:30 ise ve süre 10 dakikaysa,
-        // 12:20'den önceki rezervasyonlar expired kabul edilir.
         var expirationThreshold = DateTime.UtcNow - reservationLifetime;
+
+        if (checkpoint is not null)
+        {
+            _logger.LogInformation(
+                "Checkpoint bulundu. Son başarılı tarama: {LastProcessed}",
+                checkpoint.LastProcessedThreshold);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Checkpoint bulunamadı. İlk tarama yapılacak.");
+        }
+
+
 
         _logger.LogDebug(
        "Süresi dolmuş rezervasyonlar taranıyor. Eşik: {Threshold}",
@@ -123,13 +137,27 @@ public sealed class ReservationExpirationJob : BackgroundService
                     "Süresi dolmuş sipariş release edilirken hata. OrderId: {OrderId}",
                     orderGroup.Key);
             }
+
+
         }
+
+        await repository.SaveCheckpointAsync("ReservationExpirationJob", expirationThreshold, ct);
+        _logger.LogDebug("Checkpoint güncellendi: {Threshold}", expirationThreshold);
 
     }
 
 
     private async Task ReleaseExpiredOrderAsync(string orderId,List<InventoryTransactionLog> reserveLogs,IInventoryRepository repository,MongoDbContext dbContext,IDistributedLockService lockService,CancellationToken ct)
     {
+
+        var alreadyCompleted = await repository.IsOrderAlreadyCompletedAsync(orderId, ct);
+        if (alreadyCompleted)
+        {
+            _logger.LogDebug(
+                "Expiration: Bu sipariş zaten işlenmiş, atlanıyor. OrderId: {OrderId}",
+                orderId);
+            return;
+        }
 
         // OrderId bazında gruplanmış logları kullanarak SKU bazında toplam miktarı hesapla
         var itemsToRelease = reserveLogs

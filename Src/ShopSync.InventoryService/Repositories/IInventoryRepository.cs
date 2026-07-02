@@ -31,6 +31,18 @@ public interface IInventoryRepository
     //tüm stok bilgilerini getirir
     Task<List<InventoryItem>> GetAllItemsAsync(CancellationToken ct = default);
 
+    // Belirli bir siparişin tamamlanıp tamamlanmadığını kontrol eder
+    Task<bool> IsOrderAlreadyCompletedAsync(string orderId, CancellationToken ct = default);
+
+
+    // Expiration job'ının son checkpoint değerini getirir.
+    // Eğer daha önce hiç checkpoint kaydedilmemişse null döner.
+    Task<ExpirationCheckpoint?> GetCheckpointAsync(string jobName, CancellationToken ct = default);
+
+    // Expiration job'ının checkpoint değerini günceller veya yeni oluşturur.
+    Task SaveCheckpointAsync(string jobName, DateTime lastProcessedThreshold, CancellationToken ct = default);
+
+
 }
 
 

@@ -11,6 +11,21 @@ public sealed partial class InventoryGrpcService
     // ReleaseBatch metodu, birden fazla ürünün rezervasyonlarını serbest bırakmak için kullanılır.
     public override async Task<ReleaseBatchResponse> ReleaseBatch(ReleaseBatchRequest request, ServerCallContext context)
     {
+        var alreadyCompleted = await _repository.IsOrderAlreadyCompletedAsync(
+        request.OrderId, context.CancellationToken);
+        if (alreadyCompleted)
+        {
+            _logger.LogWarning(
+                "ReleaseBatch: Bu sipariş zaten işlenmiş. Duplicate release engellendi. OrderId: {OrderId}",
+                request.OrderId);
+            return new ReleaseBatchResponse
+            {
+                Success = false,
+                Message = $"Bu sipariş zaten işlenmiş (release/confirm/expire). OrderId: {request.OrderId}"
+            };
+        }
+
+
         _logger.LogInformation(
             "ReleaseBatch isteği alındı. OrderId: {OrderId}, Ürün sayısı: {Count}",
             request.OrderId, request.Items.Count);
