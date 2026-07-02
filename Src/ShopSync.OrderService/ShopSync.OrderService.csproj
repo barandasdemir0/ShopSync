@@ -33,9 +33,7 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<Protobuf Include="..\ShopSync.InventoryService\Protos\inventory.proto"
-				  GrpcServices="Client"
-				  Link="Protos\inventory.proto" />
+		<Protobuf Include="..\ShopSync.InventoryService\Protos\inventory.proto" GrpcServices="Client" Link="Protos\inventory.proto" />
 	</ItemGroup>
 
 </Project>
