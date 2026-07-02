@@ -24,6 +24,21 @@ service InventoryGrpc
 
 	//rezervasyon onaylama ödeme başarılı olduğunda çağırılır
 	rpc ConfirmReservation(ConfirmReservationRequest) returns (StockOperationResponse);
+
+	//bir ürünün stokunu başka bir lokasyona veya depoya aktarmak için kullanılır
+	rpc RebalanceStock (RebalanceStockRequest) returns (StockOperationResponse);
+
+	//snapshot alma işlemi, belirli bir zaman dilimindeki stok durumunu kaydetmek için kullanılır
+	rpc CreateSnapshot (CreateSnapshotRequest) returns (CreateSnapshotResponse);
+
+	//snapshot geri yükleme işlemi, daha önce alınmış bir snapshot'ı geri yüklemek için kullanılır
+	rpc RestoreSnapshot (RestoreSnapshotRequest) returns (StockOperationResponse);
+
+	// Rezervasyon batchi stok yetersizliği nedeniyle rezerve edilemeyen ürünler için fallback mekanizması sağlar
+	rpc ReserveBatchWithFallback (ReserveBatchWithFallbackRequest) returns (ReserveBatchResponse);
+
+
+
 }
 
 
@@ -119,5 +134,43 @@ message StockOperationResponse
 	string message = 2; // İşlemle ilgili mesaj
 }
 
+
+message RebalanceStockRequest 
+{
+	string sku = 1; // Ürün kodu
+	int32 quantity = 2; // Aktarılacak miktar
+	string from_location = 3; // Kaynak lokasyon
+	string to_location = 4; // Hedef lokasyon
+	string reason = 5;              // Aktarım nedeni
+}
+
+message CreateSnapshotRequest 
+{
+	string snapshot_id = 1; // Snapshot ID'si
+	string description = 2; // Snapshot açıklaması
+}
+
+message CreateSnapshotResponse 
+{
+	bool success = 1; // İşlem başarılı mı?
+	string snapshot_id = 2; // Oluşturulan snapshot ID'si
+	string message = 3; // İşlemle ilgili mesaj
+	int32 total_items = 4; // Snapshot'taki toplam ürün sayısı
+}
+
+message RestoreSnapshotRequest 
+{
+	string snapshot_id = 1; // Geri yüklenecek snapshot ID'si
+	string reason = 2; // Geri yükleme nedeni
+}
+
+
+message ReserveBatchWithFallbackRequest
+{
+	string order_id = 1; // Sipariş ID'si
+	repeated ReservationItem items = 2; // Rezervasyon yapılacak ürünlerin listesi
+	string primary_warehouse = 3; // Öncelikli depo
+	repeated string fallback_warehouses = 4; // Yedek depoların listesi
+}
 
 

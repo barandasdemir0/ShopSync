@@ -265,4 +265,34 @@ public sealed class InventoryRepository : IInventoryRepository
             await _context.ExpirationCheckpoints.ReplaceOneAsync(filter, existing, cancellationToken: ct);
         }
     }
+
+    public async Task<InventoryItem?> GetBySkuAndWarehouseAsync(string sku, string warehouseCode, CancellationToken ct = default)
+    {
+        var normalizedSku = sku.Trim().ToUpperInvariant();
+        var normalizedWarehouse = warehouseCode.Trim().ToUpperInvariant();
+        return await _context.InventoryItems
+            .Find(x => x.Sku == normalizedSku && x.WarehouseCode == normalizedWarehouse)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<List<InventoryItem>> GetBySkuAllWarehousesAsync(string sku, CancellationToken ct = default)
+    {
+        var normalizedSku = sku.Trim().ToUpperInvariant();
+        return await _context.InventoryItems
+            .Find(x => x.Sku == normalizedSku)
+            .SortByDescending(x => x.QuantityAvailable)
+            .ToListAsync(ct);
+    }
+
+    public async Task InsertSnapshotAsync(InventorySnapshot snapshot, CancellationToken ct = default)
+    {
+        await _context.Snapshots.InsertOneAsync(snapshot, cancellationToken: ct);
+    }
+
+    public async Task<InventorySnapshot?> GetSnapshotByIdAsync(string snapshotId, CancellationToken ct = default)
+    {
+        return await _context.Snapshots
+        .Find(x => x.Id == snapshotId)
+        .FirstOrDefaultAsync(ct);
+    }
 }

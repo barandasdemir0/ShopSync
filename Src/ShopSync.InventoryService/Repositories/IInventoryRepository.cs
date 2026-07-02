@@ -43,6 +43,18 @@ public interface IInventoryRepository
     Task SaveCheckpointAsync(string jobName, DateTime lastProcessedThreshold, CancellationToken ct = default);
 
 
+    // Belirli bir SKU ve depo koduna göre stok bilgisini getirir
+    Task<InventoryItem?> GetBySkuAndWarehouseAsync(string sku, string warehouseCode, CancellationToken ct = default);
+
+    // Belirli bir SKU'ya sahip tüm depolardaki stok bilgilerini getirir
+    Task<List<InventoryItem>> GetBySkuAllWarehousesAsync(string sku, CancellationToken ct = default);
+
+
+    // Yeni bir snapshot kaydeder.
+    Task InsertSnapshotAsync(InventorySnapshot snapshot, CancellationToken ct = default);
+    // Belirli bir snapshot'ı getirir.
+    Task<InventorySnapshot?> GetSnapshotByIdAsync(string snapshotId, CancellationToken ct = default);
+
 }
 
 

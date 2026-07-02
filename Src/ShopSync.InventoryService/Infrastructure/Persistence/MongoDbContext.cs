@@ -33,6 +33,10 @@ public sealed class MongoDbContext
     public IMongoCollection<ExpirationCheckpoint> ExpirationCheckpoints
         => _database.GetCollection<ExpirationCheckpoint>("expiration_checkpoints");
 
+    // Stok snapshot'larının tutulduğu collection.
+    public IMongoCollection<InventorySnapshot> Snapshots
+    => _database.GetCollection<InventorySnapshot>("inventory_snapshots");
+
     //MongoDB Client nesnesini döner.
     public IMongoClient Client => _client;
 }
