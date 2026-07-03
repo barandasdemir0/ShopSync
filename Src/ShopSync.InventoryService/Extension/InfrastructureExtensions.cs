@@ -1,4 +1,5 @@
 ﻿using ShopSync.InventoryService.Infrastructure.Locking;
+using ShopSync.InventoryService.Infrastructure.Metrics;
 using ShopSync.InventoryService.Infrastructure.Persistence;
 using ShopSync.InventoryService.Repositories;
 using StackExchange.Redis;
@@ -26,6 +27,8 @@ public static class InfrastructureExtensions
         builder.Services.AddSingleton<IDistributedLockService, RedisDistributedLockService>();
 
         builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
+        builder.Services.AddSingleton<InventoryMetrics>();
+
 
         return builder;
     }

@@ -75,7 +75,7 @@ public sealed partial class InventoryGrpcService
             targetStock.IncreaseStock(request.Quantity);
 
             using var session = await _dbContext.Client.StartSessionAsync(cancellationToken: context.CancellationToken);
-
+            session.StartTransaction();
 
             try
             {

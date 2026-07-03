@@ -56,9 +56,10 @@ public sealed class InventoryTransactionLog
     public DateTime Timestamp { get; private set; } = DateTime.UtcNow; // İşlem zaman damgasını temsil eder.
 
 
-    private InventoryTransactionLog()
+    [BsonConstructor]
+    public InventoryTransactionLog()
     {
-        
+
     }
 
     public InventoryTransactionLog(string sku,

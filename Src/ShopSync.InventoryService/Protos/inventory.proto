@@ -37,7 +37,11 @@ service InventoryGrpc
 	// Rezervasyon batchi stok yetersizliği nedeniyle rezerve edilemeyen ürünler için fallback mekanizması sağlar
 	rpc ReserveBatchWithFallback (ReserveBatchWithFallbackRequest) returns (ReserveBatchResponse);
 
+	// Yeni bir envanter ürünü/depo kaydı oluşturur
+	rpc CreateInventoryItem (CreateInventoryItemRequest) returns (StockOperationResponse);
 
+	// Belirli bir ürünü depodan kalıcı olarak siler
+	rpc DeleteInventoryItem (DeleteInventoryItemRequest) returns (StockOperationResponse);
 
 }
 
@@ -173,4 +177,13 @@ message ReserveBatchWithFallbackRequest
 	repeated string fallback_warehouses = 4; // Yedek depoların listesi
 }
 
-
+message CreateInventoryItemRequest {
+	string sku = 1;                  // Ürün kodu
+	int32 initial_quantity = 2;      // Başlangıç stok miktarı
+	string warehouse_code = 3;       // Depo kodu
+	int32 low_stock_threshold = 4;   // Düşük stok alarm limiti
+}
+message DeleteInventoryItemRequest {
+	string sku = 1;                  // Ürün kodu
+	string warehouse_code = 2;       // Depo kodu
+}

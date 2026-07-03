@@ -34,6 +34,8 @@ public sealed partial class InventoryGrpcService
             var stock = await _repository.GetBySkuAsync(
                 normalizedSku, context.CancellationToken);
 
+
+
             // SKU veritabanında yoksa hata dön
             if (stock is null)
             {
