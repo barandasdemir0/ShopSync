@@ -15,7 +15,7 @@ internal sealed class RedisLockHandle : IAsyncDisposable
     else
         return 0
     end
-    """;
+    """; //script olmadan nasıl yapılır bak
 
     private readonly IDatabase _db;
     private readonly IReadOnlyList<string> _keys;

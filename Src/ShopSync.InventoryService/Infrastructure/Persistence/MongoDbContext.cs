@@ -13,9 +13,6 @@ public sealed class MongoDbContext
 
     public MongoDbContext(IOptions<MongoDbSettings> settings)
     {
-        // GEÇİCİ LOG: Çalışma anında okunan bağlantı dizesini ekrana yazdırıyoruz
-        Console.WriteLine($"\n>>> [MONGO_DEBUG] ConnectionString: '{settings.Value.ConnectionString}'");
-        Console.WriteLine($">>> [MONGO_DEBUG] DatabaseName: '{settings.Value.DatabaseName}'\n");
 
         // tüm uygulama boyunca tek bir instance yeterlidir.
         _client = new MongoClient(settings.Value.ConnectionString);
