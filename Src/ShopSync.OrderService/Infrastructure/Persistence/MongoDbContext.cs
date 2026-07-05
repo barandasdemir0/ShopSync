@@ -20,6 +20,9 @@ public sealed class MongoDbContext
     public IMongoCollection<Order> Orders
         => _database.GetCollection<Order>("orders");
 
+    public IMongoCollection<DeadLetterEntry> DeadLetterQueue
+    => _database.GetCollection<DeadLetterEntry>("dead_letter_queue");
+
 
     // MongoDB Client'ına erişim (transaction başlatmak için)
     public IMongoClient Client => _client;

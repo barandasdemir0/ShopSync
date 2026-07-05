@@ -57,6 +57,15 @@ public sealed class OrderRepository : IOrderRepository
         return await _context.Orders.Find(filter).ToListAsync(ct);
     }
 
+    public async Task<List<Order>> GetOrdersByStatusBeforeDateAsync(string status, DateTime cutoffTime, CancellationToken ct = default)
+    {
+        var filter = Builders<Order>.Filter.And(
+       Builders<Order>.Filter.Eq(x => x.Status, status),
+       Builders<Order>.Filter.Lt(x => x.CreatedAt, cutoffTime));
+
+        return await _context.Orders.Find(filter).ToListAsync(ct);
+    }
+
     public async Task InsertAsync(Order order, CancellationToken ct = default)
     {
         if (order is null)

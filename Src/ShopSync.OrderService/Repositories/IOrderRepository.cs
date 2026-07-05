@@ -28,6 +28,10 @@ public interface IOrderRepository
     //  Belirli bir tarihten eski PENDING siparişleri getirir
     Task<List<Order>> GetExpiredOrdersAsync(DateTime olderThan, CancellationToken ct = default);
 
+
+    // Belirli bir tarihten önceki durum bazlı siparişleri getirir.
+    Task<List<Order>> GetOrdersByStatusBeforeDateAsync(string status, DateTime cutoffTime, CancellationToken ct = default);
+
 }
 
 
