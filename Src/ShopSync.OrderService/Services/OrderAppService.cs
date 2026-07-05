@@ -5,8 +5,10 @@ using ShopSync.OrderService.Dtos;
 using ShopSync.OrderService.Exceptions;
 using ShopSync.OrderService.Infrastructure.GrpcClients;
 using ShopSync.OrderService.Infrastructure.Idempotency;
+using ShopSync.OrderService.Infrastructure.Telemetry;
 using ShopSync.OrderService.Models;
 using ShopSync.OrderService.Repositories;
+using System.Diagnostics;
 
 namespace ShopSync.OrderService.Services;
 
@@ -18,13 +20,15 @@ public sealed class OrderAppService : IOrderAppService
     private readonly IInventoryGrpcClient _inventoryClient;
     private readonly IIdempotencyService _idempotencyService;
     private readonly ILogger<OrderAppService> _logger;
+    private readonly OrderMetrics _metrics;
 
-    public OrderAppService(IOrderRepository orderRepository, IInventoryGrpcClient inventoryClient, IIdempotencyService idempotencyService, ILogger<OrderAppService> logger)
+    public OrderAppService(IOrderRepository orderRepository, IInventoryGrpcClient inventoryClient, IIdempotencyService idempotencyService, ILogger<OrderAppService> logger, OrderMetrics metrics)
     {
         _orderRepository = orderRepository;
         _inventoryClient = inventoryClient;
         _idempotencyService = idempotencyService;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task<OrderResponseDto> AdminOverrideCancelAsync(string orderId, string reason, CancellationToken ct = default)
@@ -61,6 +65,7 @@ public sealed class OrderAppService : IOrderAppService
         await _orderRepository.UpdateAsync(order, ct);
         _logger.LogWarning("[ADMIN OVERRIDE] Sipariş başarıyla iptal edildi. OrderId: {OrderId}", orderId);
         var response = order.Adapt<OrderResponseDto>();
+        _metrics.OrderExpired();
         return response;
 
     }
@@ -221,7 +226,7 @@ public sealed class OrderAppService : IOrderAppService
        "Sipariş iptal işlemi başarıyla tamamlandı. OrderId: {OrderId}",
        orderId);
 
-
+        _metrics.OrderCancelled();
         // Sonucu döndür
         return response;
     }
@@ -253,6 +258,7 @@ public sealed class OrderAppService : IOrderAppService
         }
         await _orderRepository.UpdateAsync(order, ct);
         _logger.LogInformation("Sipariş onayı MongoDB'ye kaydedildi. OrderId: {OrderId}", orderId);
+        _metrics.OrderConfirmed();
         return order.Adapt<OrderResponseDto>();
 
     }
@@ -260,8 +266,11 @@ public sealed class OrderAppService : IOrderAppService
 
     public async Task<OrderResponseDto> CreateOrderAsync(CreateOrderRequestDto request, CancellationToken ct = default)
     {
+        
         _logger.LogInformation("Sipariş oluşturma işlemi başladı. IdempotencyKey: {IdempotencyKey}, Ürün Sayısı: {ItemCount}",
              request.IdempotencyKey, request.Items.Count);
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // Redis için expire süresi
         var idempotencyExpiry = TimeSpan.FromHours(24); // İdempotency anahtarının geçerlilik süresi
@@ -341,12 +350,17 @@ public sealed class OrderAppService : IOrderAppService
 
             _logger.LogDebug("Sipariş ID'si Redis Idempotency cache'ine kaydedildi. OrderId: {OrderId}", orderId);
         }
+
+        stopwatch.Stop();
+        _metrics.OrderCreated();
+        _metrics.RecordReservationDuration(stopwatch.ElapsedMilliseconds);
         return order.Adapt<OrderResponseDto>();
     }
 
     // Analytics için sipariş istatistiklerini getir
     public async Task<OrderAnalyticsResponseDto> GetAnalyticsAsync(DateTime? from, DateTime? to, CancellationToken ct = default)
     {
+       
         // 1. Veritabanına SADECE 1 KERE GİDİP o tarihteki tüm siparişleri çekiyoruz 
         // (Repository'e bu basit metodu eklememiz gerekecek)
         var orders = await _orderRepository.GetAllOrdersForAnalyticsAsync(from, to, ct);
@@ -400,6 +414,8 @@ public sealed class OrderAppService : IOrderAppService
             // Sonucu virgülden sonra 2 hane olacak şekilde yuvarla ve dön
             return Math.Round(averageSeconds, 2);
         }
+
+      
         // 4. Sonuçları tek seferde dön! Kod yarı yarıya kısaldı.
         return new OrderAnalyticsResponseDto
         {
@@ -417,6 +433,7 @@ public sealed class OrderAppService : IOrderAppService
             AnalyzedFrom = from ?? DateTime.MinValue,
             AnalyzedTo = to ?? DateTime.UtcNow
         };
+
     }
 
 
