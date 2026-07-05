@@ -1,38 +1,39 @@
-﻿using StackExchange.Redis;
+﻿using ShopSync.InventoryService.Infrastructure.Telemetry;
+using StackExchange.Redis;
+using System.Diagnostics;
 
 namespace ShopSync.InventoryService.Infrastructure.Locking;
 
 internal sealed class RedisLockHandle : IAsyncDisposable
 {
-    // Redis Lua betiği, kilidi yalnızca değer eşleştiğinde serbest bırakır.
-    //KEYS[1]: Senin kilit anahtarın (Örn: lock:inventory:PHONE-001).
-    //ARGV[1]: Senin oluşturduğun o eşsiz Guid değeri(Yani kilidi alan kişinin jetonu).
-    //return 0: Eğer değerler eşleşmezse veya kilit çoktan silinmişse 0 döndürür. Eğer başarıyla silerse redis.call('del') komutu otomatik olarak 1 döndürür. Böylece C# tarafında kilidin senin tarafınan silinip silinmediğini kontrol edebilirsin.
 
-    private const string ReleaseLockScript = """
-    if redis.call('get', KEYS[1]) == ARGV[1] then
-        return redis.call('del', KEYS[1])
-    else
-        return 0
-    end
-    """; //script olmadan nasıl yapılır bak
 
     private readonly IDatabase _db;
     private readonly IReadOnlyList<string> _keys;
     private readonly string _lockValue;
     private readonly ILogger _logger;
+
+    private readonly InventoryLockMetrics _metrics;
+    private readonly Stopwatch _holdStopwatch;
     private bool _disposed;
+
+
+
 
     public RedisLockHandle(
         IDatabase db,
         IReadOnlyList<string> keys,
         string lockValue,
-        ILogger logger)
+        ILogger logger,
+        InventoryLockMetrics metrics,
+        Stopwatch holdStopwatch)
     {
         _db = db;
         _keys = keys;
         _lockValue = lockValue;
         _logger = logger;
+        _metrics = metrics;
+        _holdStopwatch = holdStopwatch;
     }
 
 
@@ -47,6 +48,16 @@ internal sealed class RedisLockHandle : IAsyncDisposable
 
         // Dispose işlemi başlatılıyor, kilidi serbest bırak.
         _disposed = true;
+
+        _holdStopwatch.Stop();
+        var elapsedMs = _holdStopwatch.ElapsedMilliseconds;
+
+        foreach (var key in _keys)
+        {
+            // "lock:inventory:SKU" formatından sadece SKU'yu ayıklıyoruz
+            var sku = key.Replace("lock:inventory:", "", StringComparison.OrdinalIgnoreCase); //ordinal ignore case ile büyük küçük harf farketmez ve "lock:inventory:", "", burası boş string ile değiştiriliyor ve sku elde ediliyor
+            _metrics.RecordLockHold(elapsedMs, sku);
+        }
 
         // Kilidi serbest bırakmak için Redis Lua betiğini çalıştır.
         await ReleaseAsync(_db, _keys, _lockValue, _logger);
@@ -70,19 +81,21 @@ internal sealed class RedisLockHandle : IAsyncDisposable
         {
             try
             {
-                await db.ScriptEvaluateAsync(
-                    ReleaseLockScript, // Lua betiği
-                    new RedisKey[] { key }, // Kilit anahtarı
-                    new RedisValue[] { lockValue }); // Kilidi serbest bırakmak için kullanılan eşsiz değer (lockValue)
-
-                logger.LogDebug("Kilit serbest bırakıldı: {Key}", key);
+                // StackExchange.Redis'in yerleşik atomik kilit serbest bırakma metodu
+                // Arka planda aynı Lua scriptini çalıştırır ama sen Lua görmezsin!
+                var released = await db.LockReleaseAsync(key, lockValue);
+                if (released)
+                {
+                    logger.LogDebug("Kilit serbest bırakıldı: {Key}", key);
+                }
+                else
+                {
+                    logger.LogWarning("Kilit serbest bırakılamadı (başka biri almış olabilir): {Key}", key);
+                }
             }
             catch (Exception ex)
             {
-                logger.LogError(
-                    ex,
-                    "Kilit serbest bırakılırken hata oluştu: {Key}",
-                    key);
+                logger.LogError(ex, "Kilit serbest bırakılırken hata oluştu: {Key}", key);
             }
         }
     }

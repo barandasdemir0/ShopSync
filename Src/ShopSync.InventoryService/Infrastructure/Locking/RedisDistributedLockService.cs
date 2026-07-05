@@ -1,4 +1,6 @@
-﻿using StackExchange.Redis;
+﻿using ShopSync.InventoryService.Infrastructure.Telemetry;
+using StackExchange.Redis;
+using System.Diagnostics;
 
 namespace ShopSync.InventoryService.Infrastructure.Locking;
 
@@ -6,11 +8,13 @@ public sealed class RedisDistributedLockService : IDistributedLockService
 {
     private readonly IDatabase _redisDb;
     private readonly ILogger<RedisDistributedLockService> _logger;
+    private readonly InventoryLockMetrics _lockMetrics;
 
-    public RedisDistributedLockService(IConnectionMultiplexer redis, ILogger<RedisDistributedLockService> logger)
+    public RedisDistributedLockService(IConnectionMultiplexer redis, ILogger<RedisDistributedLockService> logger, InventoryLockMetrics lockMetrics)
     {
         _redisDb = redis.GetDatabase();
         _logger = logger;
+        _lockMetrics = lockMetrics;
     }
 
     // Kilidi almaya çalışırken her denemeler arası bekleme süresi
@@ -22,6 +26,8 @@ public sealed class RedisDistributedLockService : IDistributedLockService
     // AcquireLocksAsync metodu, verilen anahtarlar için kilitleri almaya çalışır.
     public async Task<IAsyncDisposable> AcquireLocksAsync(IEnumerable<string> keys, TimeSpan? expiry = null, CancellationToken cancellationToken = default)
     {
+
+
 
         // Anahtarlar null ise ArgumentNullException fırlatılır.
         if (keys is null)
@@ -54,6 +60,10 @@ public sealed class RedisDistributedLockService : IDistributedLockService
         // Kilit alınan anahtarları tutmak için bir liste oluşturulur.
         var acquiredLocks = new List<string>();
 
+        // 6. KİLİT SAHİPLİK KRONOMETRESİNİ BAŞLAT
+        var holdStopwatch = Stopwatch.StartNew();
+
+
 
         // Anahtarlar üzerinde sırayla kilit almaya çalışılır.
         try
@@ -61,8 +71,14 @@ public sealed class RedisDistributedLockService : IDistributedLockService
             // Anahtarlar sıralı bir şekilde işlenir, bu sayede deadlock riski azaltılır.
             foreach (var key in sortedKeys)
             {
+
+                var sku = key.Replace("lock:inventory:", "", StringComparison.OrdinalIgnoreCase);
+
                 // Kilit alınamadığında tekrar denemek için bir değişken tanımlanır.
                 var acquired = false;
+
+                // 7. KİLİT BEKLEME SÜRESİ KRONOMETRESİNİ BAŞLAT
+                var lockWaitStopwatch = Stopwatch.StartNew();
 
                 // Maksimum deneme sayısı kadar kilit almaya çalışılır.
                 for (int retry = 0; retry < MaxRetries; retry++)
@@ -70,12 +86,20 @@ public sealed class RedisDistributedLockService : IDistributedLockService
                     // CancellationToken kontrolü yapılır, eğer iptal edilmişse OperationCanceledException fırlatılır.
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // Redis üzerinde SETNX komutu ile kilit almaya çalışılır. Eğer kilit alınabilirse true döner, aksi halde false döner.
-                    acquired = await _redisDb.StringSetAsync(
-                        key,// Kilit değeri olarak benzersiz bir GUID kullanılır.
-                        lockValue, //lockValue,
-                        lockExpiry, // Kilit süresi
-                        When.NotExists); // Sadece kilit mevcut değilse (NotExists) kilit alınır.
+                    try
+                    {
+                        acquired = await _redisDb.LockTakeAsync(key, lockValue, lockExpiry);
+
+
+                    }
+                    catch (Exception)
+                    {
+                        // 8. HATA DURUMUNDA CONTENTION METRİĞİNİ YAZ
+                        _lockMetrics.LockContention(sku);
+                        throw;
+                    }
+
+                   
 
 
                     // Eğer kilit alınabilmişse acquiredLocks listesine eklenir ve döngüden çıkılır.
@@ -83,8 +107,22 @@ public sealed class RedisDistributedLockService : IDistributedLockService
                     {
                         _logger.LogDebug("Kilit alındı: {Key}", key);
                         acquiredLocks.Add(key);
+
+                        // 9. KİLİT ALINDI METRİKLERİNİ KAYDET
+                        lockWaitStopwatch.Stop();
+                        _lockMetrics.RecordLockWait(lockWaitStopwatch.ElapsedMilliseconds, sku);
+                        _lockMetrics.LockAcquired(sku);
                         break;
                     }
+
+                    // 10. TÜM DENEMELERE RAĞMEN ALINAMADIYSA TIMEOUT YAZ
+                    if (retry == MaxRetries - 1)
+                    {
+                        lockWaitStopwatch.Stop();
+                        _lockMetrics.LockFailed(sku);
+                        _lockMetrics.LockTimeout(sku);
+                    }
+
 
                     _logger.LogDebug(
                         "Kilit meşgul, tekrar deneniyor: {Key} (Deneme: {Retry}/{Max})",
@@ -111,10 +149,12 @@ public sealed class RedisDistributedLockService : IDistributedLockService
                 acquiredLocks.Count);
 
             return new RedisLockHandle(
-                _redisDb,
-                acquiredLocks,
-                lockValue,
-                _logger);
+             _redisDb,
+             acquiredLocks,
+             lockValue,
+             _logger,
+             _lockMetrics,
+             holdStopwatch);
         }
         catch
         {
