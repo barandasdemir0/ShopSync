@@ -1,4 +1,6 @@
-﻿using ShopSync.OrderService.Models;
+﻿
+
+using ShopSync.OrderService.Models;
 
 namespace ShopSync.OrderService.Repositories;
 
@@ -31,6 +33,18 @@ public interface IOrderRepository
 
     // Belirli bir tarihten önceki durum bazlı siparişleri getirir.
     Task<List<Order>> GetOrdersByStatusBeforeDateAsync(string status, DateTime cutoffTime, CancellationToken ct = default);
+
+
+
+    // Duruma göre sipariş sayısını döner (analytics için)
+    Task<long> CountByStatusAsync(string status, DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
+
+    // Belirli bir duruma geçiş süresinin ortalamasını hesaplar
+    Task<double> GetAverageTransitionTimeAsync(string targetStatus, DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
+
+    // Belirli bir tarihten önceki siparişleri getirir (analytics için)
+    Task<List<Order>> GetAllOrdersForAnalyticsAsync(DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
+
 
 }
 

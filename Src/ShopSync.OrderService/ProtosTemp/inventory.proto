@@ -1,0 +1,189 @@
+syntax = "proto3";
+
+option csharp_namespace = "ShopSync.InventoryService.Protos";
+
+// Paket adı. Farklı proto dosyalarının çakışmasını önler.
+package inventory;
+
+service InventoryGrpc
+{
+	//  Toplu stok rezervasyonu yapar
+	rpc ReserveBatch(ReserveBatchRequest) returns (ReserveBatchResponse);
+
+	//  Toplu stok rezervasyonunu serbest bırakır iptal eder
+	rpc ReleaseBatch(ReleaseBatchRequest) returns (ReleaseBatchResponse);
+
+	//  Belirli bir stok bilgisini getirir
+	rpc GetStock(GetStockRequest) returns (GetStockResponse);
+
+	//stok artırma işlemi
+	rpc IncreaseStock(IncreaseStockRequest) returns (StockOperationResponse);
+
+	//stok azaltma işlemi
+	rpc DecreaseStock(DecreaseStockRequest) returns (StockOperationResponse);
+
+	//rezervasyon onaylama ödeme başarılı olduğunda çağırılır
+	rpc ConfirmReservation(ConfirmReservationRequest) returns (StockOperationResponse);
+
+	//bir ürünün stokunu başka bir lokasyona veya depoya aktarmak için kullanılır
+	rpc RebalanceStock (RebalanceStockRequest) returns (StockOperationResponse);
+
+	//snapshot alma işlemi, belirli bir zaman dilimindeki stok durumunu kaydetmek için kullanılır
+	rpc CreateSnapshot (CreateSnapshotRequest) returns (CreateSnapshotResponse);
+
+	//snapshot geri yükleme işlemi, daha önce alınmış bir snapshot'ı geri yüklemek için kullanılır
+	rpc RestoreSnapshot (RestoreSnapshotRequest) returns (StockOperationResponse);
+
+	// Rezervasyon batchi stok yetersizliği nedeniyle rezerve edilemeyen ürünler için fallback mekanizması sağlar
+	rpc ReserveBatchWithFallback (ReserveBatchWithFallbackRequest) returns (ReserveBatchResponse);
+
+	// Yeni bir envanter ürünü/depo kaydı oluşturur
+	rpc CreateInventoryItem (CreateInventoryItemRequest) returns (StockOperationResponse);
+
+	// Belirli bir ürünü depodan kalıcı olarak siler
+	rpc DeleteInventoryItem (DeleteInventoryItemRequest) returns (StockOperationResponse);
+
+}
+
+
+// Rezervasyon yapılacak ürün bilgisi
+message ReserveBatchRequest
+{
+	string order_id = 1; // Sipariş ID'si
+	repeated ReservationItem items = 2; // Rezervasyon yapılacak ürünlerin listesi
+}
+
+// tek bir ürünün Rezervasyon bilgisi
+message ReservationItem
+{
+	string sku = 1; // Ürün kodu
+	int32 quantity = 2; // Rezervasyon yapılacak miktar
+}
+
+
+// Rezervasyon batchin döndürdüğü yanıt
+message ReserveBatchResponse
+{
+	bool success = 1; // Rezervasyon başarılı mı?
+	string message = 2; // İşlemle ilgili mesaj
+	repeated FailedItem failed_items = 3; // Rezervasyon yapılamayan ürünlerin listesi
+}
+
+
+// stok yetersizliği nedeniyle rezerve edilemeyen ürün bilgisi
+message FailedItem
+{
+	string sku = 1; // Ürün kodu
+	int32 requested_quantity = 2; // Talep edilen miktar
+	int32 available_quantity = 3; // Mevcut stok miktarı
+	string reason = 4; // Rezervasyon yapılamama nedeni
+}
+
+
+// rezervasyonunu iptal etme
+message ReleaseBatchRequest
+{
+	string order_id = 1; // Sipariş ID'si
+	repeated ReservationItem items = 2; // iptal edilecek ürün ve miktarı
+}
+
+// rezervasyon iptal batchin döndürdüğü yanıt
+message ReleaseBatchResponse
+{
+	bool success = 1; // İptal başarılı mı?
+	string message = 2; // İşlemle ilgili mesaj
+	repeated FailedItem failed_items = 3; // İptal yapılamayan ürünlerin listesi
+}
+
+
+// stok bilgisini getirme isteği
+message GetStockRequest
+{
+	string sku = 1; // Ürün kodu
+}
+
+//stok sorgulama sonucu
+message GetStockResponse
+{
+	string sku = 1; // Ürün kodu
+	int32 available_quantity = 2; // Mevcut stok miktarı
+	int32 reserved_quantity = 3; // Rezervasyon yapılmış miktar
+	bool found = 4; // Ürün stokta bulunuyor mu?
+}
+
+
+message IncreaseStockRequest
+{
+	string sku = 1; // Ürün kodu
+	int32 quantity = 2; // Artırılacak miktar
+	string reason = 3; // Artırma nedeni
+}
+
+message DecreaseStockRequest
+{
+	string sku = 1; // Ürün kodu
+	int32 quantity = 2; // Azaltılacak miktar
+	string reason = 3; // Azaltma nedeni
+}
+
+message ConfirmReservationRequest
+{
+	string order_id = 1; // Sipariş ID'si
+	repeated ReservationItem items = 2; // Onaylanacak rezervasyon ürünleri
+}
+
+message StockOperationResponse
+{
+	bool success = 1; // İşlem başarılı mı?
+	string message = 2; // İşlemle ilgili mesaj
+}
+
+
+message RebalanceStockRequest 
+{
+	string sku = 1; // Ürün kodu
+	int32 quantity = 2; // Aktarılacak miktar
+	string from_location = 3; // Kaynak lokasyon
+	string to_location = 4; // Hedef lokasyon
+	string reason = 5;              // Aktarım nedeni
+}
+
+message CreateSnapshotRequest 
+{
+	string snapshot_id = 1; // Snapshot ID'si
+	string description = 2; // Snapshot açıklaması
+}
+
+message CreateSnapshotResponse 
+{
+	bool success = 1; // İşlem başarılı mı?
+	string snapshot_id = 2; // Oluşturulan snapshot ID'si
+	string message = 3; // İşlemle ilgili mesaj
+	int32 total_items = 4; // Snapshot'taki toplam ürün sayısı
+}
+
+message RestoreSnapshotRequest 
+{
+	string snapshot_id = 1; // Geri yüklenecek snapshot ID'si
+	string reason = 2; // Geri yükleme nedeni
+}
+
+
+message ReserveBatchWithFallbackRequest
+{
+	string order_id = 1; // Sipariş ID'si
+	repeated ReservationItem items = 2; // Rezervasyon yapılacak ürünlerin listesi
+	string primary_warehouse = 3; // Öncelikli depo
+	repeated string fallback_warehouses = 4; // Yedek depoların listesi
+}
+
+message CreateInventoryItemRequest {
+	string sku = 1;                  // Ürün kodu
+	int32 initial_quantity = 2;      // Başlangıç stok miktarı
+	string warehouse_code = 3;       // Depo kodu
+	int32 low_stock_threshold = 4;   // Düşük stok alarm limiti
+}
+message DeleteInventoryItemRequest {
+	string sku = 1;                  // Ürün kodu
+	string warehouse_code = 2;       // Depo kodu
+}

@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using ShopSync.OrderService.Dtos;
 using ShopSync.OrderService.Repositories;
 using ShopSync.OrderService.Services;
@@ -88,6 +87,15 @@ public class OrderController : ControllerBase
         }
             
         var response = await _orderService.AdminOverrideCancelAsync(orderId, request.Reason, ct);
+        return Ok(response);
+    }
+
+
+    [HttpGet("analytics")]
+    public async Task<IActionResult> GetAnalytics([FromQuery] DateTime? from, [FromQuery] DateTime? to,
+    CancellationToken ct)
+    {
+        var response = await _orderService.GetAnalyticsAsync(from, to, ct);
         return Ok(response);
     }
 

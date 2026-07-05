@@ -1,4 +1,5 @@
 ﻿using Mapster;
+using MongoDB.Driver;
 using ShopSync.InventoryService.Protos;
 using ShopSync.OrderService.Dtos;
 using ShopSync.OrderService.Exceptions;
@@ -6,7 +7,6 @@ using ShopSync.OrderService.Infrastructure.GrpcClients;
 using ShopSync.OrderService.Infrastructure.Idempotency;
 using ShopSync.OrderService.Models;
 using ShopSync.OrderService.Repositories;
-using StackExchange.Redis;
 
 namespace ShopSync.OrderService.Services;
 
@@ -99,7 +99,7 @@ public sealed class OrderAppService : IOrderAppService
                 order.Cancel(request.Reason);
                 // InventoryService'e stokları serbest bırak
                 var releaseItems = order.LineItems.Select(li =>
-               new ReservationItem 
+               new ReservationItem
                {
                    Sku = li.Sku,
                    Quantity = li.RequestedQuantity
@@ -257,6 +257,7 @@ public sealed class OrderAppService : IOrderAppService
 
     }
 
+
     public async Task<OrderResponseDto> CreateOrderAsync(CreateOrderRequestDto request, CancellationToken ct = default)
     {
         _logger.LogInformation("Sipariş oluşturma işlemi başladı. IdempotencyKey: {IdempotencyKey}, Ürün Sayısı: {ItemCount}",
@@ -342,6 +343,82 @@ public sealed class OrderAppService : IOrderAppService
         }
         return order.Adapt<OrderResponseDto>();
     }
+
+    // Analytics için sipariş istatistiklerini getir
+    public async Task<OrderAnalyticsResponseDto> GetAnalyticsAsync(DateTime? from, DateTime? to, CancellationToken ct = default)
+    {
+        // 1. Veritabanına SADECE 1 KERE GİDİP o tarihteki tüm siparişleri çekiyoruz 
+        // (Repository'e bu basit metodu eklememiz gerekecek)
+        var orders = await _orderRepository.GetAllOrdersForAnalyticsAsync(from, to, ct);
+        var totalOrders = orders.Count;
+
+        // Hiç sipariş yoksa direkt sıfırları dön
+        if (totalOrders == 0)
+        {
+            return new OrderAnalyticsResponseDto { TotalOrders = 0 };
+        }
+        // 2. RAM üzerinde milisaniyeler içinde sayıları hesapla
+        var pendingCount = orders.Count(o => o.Status == OrderStatus.Pending.Code);
+        var confirmedCount = orders.Count(o => o.Status == OrderStatus.Confirmed.Code);
+        var cancelledCount = orders.Count(o => o.Status == OrderStatus.Cancelled.Code);
+        var expiredCount = orders.Count(o => o.Status == OrderStatus.Expired.Code);
+
+        // 3. Ortalama süreyi hesaplayan akıllı bir iç-metot
+        double CalculateAvgTime(string status)
+        {
+            // Önce istenen durumda olan siparişleri filtrele
+            var targetOrders = orders.Where(o => o.Status == status).ToList();
+            if (targetOrders.Count == 0)
+            {
+                return 0;
+            }
+            // Süreleri ve geçerli sipariş sayısını tutacağımız değişkenler
+            double totalSeconds = 0;
+            int validTransitionsCount = 0;
+
+            // Her bir siparişi tek tek dolaş
+            foreach (var order in targetOrders)
+            {
+                // Siparişin geçmişinden, aradığımız duruma geçtiği "o anı" bul
+                var transition = order.History.LastOrDefault(h => h.Status.ToString() == status);
+                // Eğer geçiş kaydı varsa, aradaki zaman farkını hesapla
+                if (transition != null)
+                {
+                    double secondsTaken = (transition.Timestamp - order.CreatedAt).TotalSeconds;
+
+                    totalSeconds += secondsTaken;
+                    validTransitionsCount++;
+                }
+            }
+            // Eğer hiç geçerli geçiş kaydı yoksa sıfır dön (Sıfıra bölme hatasını engellemek için)
+            if (validTransitionsCount == 0)
+            {
+                return 0;
+            }
+            // Ortalamayı bul (Toplam Süre / Sayı)
+            double averageSeconds = totalSeconds / validTransitionsCount;
+            // Sonucu virgülden sonra 2 hane olacak şekilde yuvarla ve dön
+            return Math.Round(averageSeconds, 2);
+        }
+        // 4. Sonuçları tek seferde dön! Kod yarı yarıya kısaldı.
+        return new OrderAnalyticsResponseDto
+        {
+            TotalOrders = totalOrders,
+            PendingCount = pendingCount,
+            ConfirmedCount = confirmedCount,
+            CancelledCount = cancelledCount,
+            ExpiredCount = expiredCount,
+            ConfirmationRate = Math.Round((double)confirmedCount / totalOrders * 100, 2), // Yüzdeyi hesapla ve virgülden sonra 2 hane yuvarla 
+            CancellationRate = Math.Round((double)cancelledCount / totalOrders * 100, 2),
+            ExpirationRate = Math.Round((double)expiredCount / totalOrders * 100, 2),
+            AverageTimeToConfirmSeconds = CalculateAvgTime(OrderStatus.Confirmed.Code),
+            AverageTimeToCancelSeconds = CalculateAvgTime(OrderStatus.Cancelled.Code),
+            AverageTimeToExpireSeconds = CalculateAvgTime(OrderStatus.Expired.Code),
+            AnalyzedFrom = from ?? DateTime.MinValue,
+            AnalyzedTo = to ?? DateTime.UtcNow
+        };
+    }
+
 
     // Sipariş detayını getir
     public async Task<OrderResponseDto> GetOrderAsync(string orderId, CancellationToken ct = default)

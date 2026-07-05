@@ -2,6 +2,7 @@
 using ShopSync.OrderService.Infrastructure.Persistence;
 using ShopSync.OrderService.Models;
 
+
 namespace ShopSync.OrderService.Infrastructure.DeadLetter;
 
 public sealed class DeadLetterService : IDeadLetterService
@@ -26,6 +27,7 @@ public sealed class DeadLetterService : IDeadLetterService
             "Sipariş Dead Letter Queue'ya eklendi. OrderId: {OrderId}, Hata: {Error}",
             order.OrderId, errorMessage);
     }
+
 
     // bu method, henüz çözülmemiş Dead Letter Queue kayıtlarını getirir.
     public async Task<List<DeadLetterEntry>> GetUnresolvedAsync(CancellationToken ct = default)
@@ -54,4 +56,6 @@ public sealed class DeadLetterService : IDeadLetterService
         await _context.DeadLetterQueue.ReplaceOneAsync(filter, entry, cancellationToken: ct);
         _logger.LogInformation("Dead letter çözüldü. Id: {Id}, Çözüm: {Resolution}", deadLetterId, resolution);
     }
+
+ 
 }

@@ -20,5 +20,9 @@ public interface IOrderAppService
     // siparişleri admin override ile iptal etmek için metod
     Task<OrderResponseDto> AdminOverrideCancelAsync(string orderId, string reason, CancellationToken ct = default);
 
+    Task<OrderAnalyticsResponseDto> GetAnalyticsAsync(DateTime? from, DateTime? to, CancellationToken ct = default);
+
+
+
 
 }
