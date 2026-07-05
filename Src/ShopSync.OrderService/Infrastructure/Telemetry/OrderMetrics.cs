@@ -22,6 +22,15 @@ public sealed class OrderMetrics
     private readonly Histogram<double> _grpcCallDurationMs;
     // Circuit breaker durum değişikliği sayacı
     private readonly Counter<long> _circuitBreakerStateChanges;
+
+    // Geçici (transient) gRPC hatası sayacı
+    // Unavailable, DeadlineExceeded, Aborted, ResourceExhausted
+    private readonly Counter<long> _grpcTransientErrors;
+    // Sistemsel (systemic) gRPC hatası sayacı
+    // Internal, Unimplemented, PermissionDenied, NotFound, Unknown
+    private readonly Counter<long> _grpcSystemicErrors;
+
+
     public OrderMetrics(IMeterFactory meterFactory)
     {
         var meter = meterFactory.Create("ShopSync.OrderService");
@@ -55,6 +64,14 @@ public sealed class OrderMetrics
         _circuitBreakerStateChanges = meter.CreateCounter<long>(
             "shopsync_circuit_breaker_state_changes_total",
             description: "Circuit breaker durum değişikliği sayısı");
+
+      
+        _grpcTransientErrors = meter.CreateCounter<long>(
+            "shopsync_grpc_transient_errors_total",
+            description: "Geçici gRPC hata sayısı (network, timeout vb.)");
+        _grpcSystemicErrors = meter.CreateCounter<long>(
+            "shopsync_grpc_systemic_errors_total",
+            description: "Sistemsel gRPC hata sayısı (bug, config hatası vb.)");
     }
     // Kullanım metotları
     public void OrderCreated() => _ordersCreated.Add(1);
@@ -69,4 +86,9 @@ public sealed class OrderMetrics
     // Circuit breaker durum değişikliği metodu
     public void CircuitBreakerStateChanged(string newState) =>
         _circuitBreakerStateChanges.Add(1, new KeyValuePair<string, object?>("state", newState));
+
+    public void GrpcTransientError(string statusCode)
+    => _grpcTransientErrors.Add(1, new KeyValuePair<string, object?>("status_code", statusCode));
+    public void GrpcSystemicError(string statusCode)
+        => _grpcSystemicErrors.Add(1, new KeyValuePair<string, object?>("status_code", statusCode));
 }
