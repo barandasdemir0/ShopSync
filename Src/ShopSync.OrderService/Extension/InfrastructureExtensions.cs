@@ -1,4 +1,5 @@
-﻿using ShopSync.OrderService.Infrastructure.Persistence;
+﻿using ShopSync.OrderService.Infrastructure.Idempotency;
+using ShopSync.OrderService.Infrastructure.Persistence;
 using ShopSync.OrderService.Repositories;
 using StackExchange.Redis;
 
@@ -24,6 +25,8 @@ public static class InfrastructureExtensions
         });
         // Sipariş repository
         builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+        builder.Services.AddScoped<IIdempotencyService, RedisIdempotencyService>();
+
         return builder;
     }
 }

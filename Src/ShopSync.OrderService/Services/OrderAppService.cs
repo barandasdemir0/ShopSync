@@ -3,6 +3,7 @@ using ShopSync.InventoryService.Protos;
 using ShopSync.OrderService.Dtos;
 using ShopSync.OrderService.Exceptions;
 using ShopSync.OrderService.Infrastructure.GrpcClients;
+using ShopSync.OrderService.Infrastructure.Idempotency;
 using ShopSync.OrderService.Models;
 using ShopSync.OrderService.Repositories;
 
@@ -14,10 +15,13 @@ public sealed class OrderAppService : IOrderAppService
 
     private readonly IOrderRepository _orderRepository;
     private readonly IInventoryGrpcClient _inventoryClient;
-    public OrderAppService(IOrderRepository orderRepository, IInventoryGrpcClient inventoryClient)
+    private readonly IIdempotencyService _idempotencyService;
+
+    public OrderAppService(IOrderRepository orderRepository, IInventoryGrpcClient inventoryClient, IIdempotencyService idempotencyService)
     {
         _orderRepository = orderRepository;
         _inventoryClient = inventoryClient;
+        _idempotencyService = idempotencyService;
     }
 
 
@@ -71,21 +75,44 @@ public sealed class OrderAppService : IOrderAppService
 
     public async Task<OrderResponse> CreateOrderAsync(CreateOrderRequest request, CancellationToken ct = default)
     {
+        // Redis için expire süresi
+        var idempotencyExpiry = TimeSpan.FromHours(24); // İdempotency anahtarının geçerlilik süresi
+        bool idempotencyLockAcquired = false; // İdempotency kilidinin alınıp alınmadığını takip etmek için bir bayrak
+
         // İdempotency kontrolü
         if (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
         {
-            var existingOrder = await _orderRepository.GetByIdempotencyKeyAsync(request.IdempotencyKey, ct);
-            if (existingOrder is not null)
+            // İdempotency anahtarını Redis'te kontrol et
+            var existingOrderId = await _idempotencyService.GetOrderIdAsync(request.IdempotencyKey, ct);
+            // Eğer daha önce aynı idempotency key ile bir sipariş oluşturulmuşsa, o siparişi döndür
+            if (existingOrderId is not null && existingOrderId != "PROCESSING")
             {
-                return existingOrder.Adapt<OrderResponse>();
+                // Varsa direkt dön
+                var existingOrder = await _orderRepository.GetByOrderIdAsync(existingOrderId, ct);
+                if (existingOrder is not null)
+                {
+                    return existingOrder.Adapt<OrderResponse>();
+                }
             }
+
+            // B. İlk defa geliyorsa kilidi al 
+            var acquired = await _idempotencyService.TryAcquireAsync(request.IdempotencyKey, idempotencyExpiry, ct);
+            if (!acquired)
+            {
+                throw new DomainException("Bu istek şu an işleniyor. Lütfen biraz bekleyin.", "IDEMPOTENCY_IN_PROGRESS");
+            }
+            idempotencyLockAcquired = true;
+
+
         }
 
         // Domain nesnesi yarat
         var orderId = Guid.NewGuid().ToString("N");
 
+        // Siparişin line itemlarını oluştur
         var lineItems = request.Items.Select(i => new OrderLineItem(i.Sku, i.Quantity)).ToList();
 
+        // Sipariş nesnesini yarat
         var order = new Order(orderId, lineItems, request.IdempotencyKey);
 
         // gRPC ile Envantere Git
@@ -106,6 +133,13 @@ public sealed class OrderAppService : IOrderAppService
         // Eğer rezervasyon başarılı ise, siparişi veritabanına kaydediyoruz.
         order.MarkItemsAsReserved();
         await _orderRepository.InsertAsync(order, ct);
+
+        // İdempotency anahtarını Redis'e kaydet
+        if (idempotencyLockAcquired)
+        {
+            // İdempotency anahtarını Redis'e kaydet ve sipariş ID'sini ilişkilendir
+            await _idempotencyService.SetOrderIdAsync(request.IdempotencyKey!, orderId, idempotencyExpiry, ct);
+        }
         return order.Adapt<OrderResponse>();
     }
 
