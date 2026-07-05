@@ -1,7 +1,0 @@
-<Solution>
-  <Project Path="docker-compose.dcproj">
-    <Build />
-  </Project>
-  <Project Path="ShopSync.InventoryService/ShopSync.InventoryService.csproj" />
-  <Project Path="ShopSync.OrderService/ShopSync.OrderService.csproj" />
-</Solution>
