@@ -17,7 +17,7 @@ public class OrderController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request, CancellationToken ct)
+    public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequestDto request, CancellationToken ct)
     {
         if (request.Items.Count == 0)
         {
@@ -44,9 +44,50 @@ public class OrderController : ControllerBase
     }
 
     [HttpDelete("{orderId}")]
-    public async Task<IActionResult> CancelOrder(string orderId, [FromBody] CancelOrderRequest? request, CancellationToken ct)
+    public async Task<IActionResult> CancelOrder(string orderId, [FromBody] CancelOrderRequestDto? request, CancellationToken ct)
     {
         var response = await _orderService.CancelOrderAsync(orderId, request, ct);
+        return Ok(response);
+    }
+
+    [HttpPost("{orderId}/confirm")]
+    public async Task<IActionResult> ConfirmOrder(string orderId,[FromBody] ConfirmOrderRequestDto? request ,CancellationToken ct)
+    {
+        var response = await _orderService.ConfirmOrderAsync(orderId, ct);
+        return Ok(response);
+    }
+
+
+    [HttpPost("batch-cancel")]
+    public async Task<IActionResult> BatchCancel([FromBody] BatchCancelRequestDto request,
+    CancellationToken ct)
+    {
+        if (request.OrderIds.Count == 0)
+        {
+            return BadRequest(new 
+            { 
+                success = false, message = "En az bir sipariş ID'si belirtilmelidir." 
+            });
+        }
+           
+        var response = await _orderService.BatchCancelAsync(request, ct);
+        return Ok(response);
+    }
+
+
+    [HttpPost("{orderId}/admin-override")]
+    public async Task<IActionResult> AdminOverride(string orderId, [FromBody] AdminOverrideRequestDto request,
+    CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Reason))
+        {
+            return BadRequest(new 
+            { 
+                success = false, message = "Admin override için sebep belirtilmelidir." 
+            });
+        }
+            
+        var response = await _orderService.AdminOverrideCancelAsync(orderId, request.Reason, ct);
         return Ok(response);
     }
 

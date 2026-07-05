@@ -1,6 +1,6 @@
 ﻿namespace ShopSync.OrderService.Dtos;
 
-public sealed class ApiResponse
+public sealed class ApiResponseDto
 {
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;

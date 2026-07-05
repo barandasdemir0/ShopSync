@@ -1,6 +1,6 @@
 ﻿namespace ShopSync.OrderService.Dtos;
 
-public sealed class OrderResponse
+public sealed class OrderResponseDto
 {
     public string OrderId { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;

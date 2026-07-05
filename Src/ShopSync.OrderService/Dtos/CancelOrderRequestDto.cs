@@ -1,6 +1,6 @@
 ﻿namespace ShopSync.OrderService.Dtos;
 
-public sealed class CancelOrderRequest
+public sealed class CancelOrderRequestDto
 {
     public string? Reason { get; set; }
 }

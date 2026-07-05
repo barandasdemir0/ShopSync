@@ -1,6 +1,6 @@
 ﻿namespace ShopSync.OrderService.Dtos;
 
-public sealed class PagedResponse<T>
+public sealed class PagedResponseDto<T>
 {
     // İşlem başarılı mı?
     public bool Success { get; set; } = true;
