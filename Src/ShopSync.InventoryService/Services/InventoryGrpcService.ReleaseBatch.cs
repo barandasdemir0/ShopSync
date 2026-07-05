@@ -1,6 +1,7 @@
 ﻿using Grpc.Core;
 using ShopSync.InventoryService.Models;
 using ShopSync.InventoryService.Protos;
+using StackExchange.Redis;
 
 
 namespace ShopSync.InventoryService.Services;
@@ -11,6 +12,28 @@ public sealed partial class InventoryGrpcService
     // ReleaseBatch metodu, birden fazla ürünün rezervasyonlarını serbest bırakmak için kullanılır.
     public override async Task<ReleaseBatchResponse> ReleaseBatch(ReleaseBatchRequest request, ServerCallContext context)
     {
+        var releaseGuardKey = $"release_guard:{request.OrderId}";
+        var db = _redis.GetDatabase();
+
+        // SET NX ile atomic kontrol: Bu orderId için daha önce release yapılmış mı?
+        var isFirstRelease = await db.StringSetAsync(
+            releaseGuardKey,
+            DateTime.UtcNow.ToString("O"),
+            TimeSpan.FromHours(24),
+            When.NotExists);
+        if (!isFirstRelease)
+        {
+            _logger.LogWarning(
+                "Duplicate release engellendi! OrderId: {OrderId} için release zaten yapılmış.",
+                request.OrderId);
+            return new ReleaseBatchResponse
+            {
+                Success = true, // Idempotent (yinelenen) istek olduğu için True döner
+                Message = $"Release zaten yapılmış. OrderId: {request.OrderId} (idempotent)"
+            };
+        }
+
+
         var alreadyCompleted = await _repository.IsOrderAlreadyCompletedAsync(
         request.OrderId, context.CancellationToken);
         if (alreadyCompleted)
