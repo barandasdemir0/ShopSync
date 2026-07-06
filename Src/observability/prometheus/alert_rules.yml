@@ -1,0 +1,68 @@
+# ============================================================
+# Prometheus Alert Kuralları
+#
+# Bu kurallar, sistemdeki anormallikleri tespit edip
+# Grafana'ya alert gönderir.
+# ============================================================
+
+groups:
+  - name: shopsync_alerts
+    rules:
+
+      # 1. Yüksek hata oranı (5 dakikada %10'dan fazla gRPC hatası)
+      - alert: HighGrpcErrorRate
+        expr: >
+          rate(shopsync_grpc_transient_errors_total[5m]) +
+          rate(shopsync_grpc_systemic_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Yüksek gRPC hata oranı tespit edildi"
+          description: "Son 5 dakikada gRPC hata oranı %10'u aştı."
+
+      # 2. gRPC yanıt süresi çok yüksek (p95 > 5 saniye)
+      - alert: HighGrpcLatency
+        expr: >
+          histogram_quantile(0.95,
+            rate(shopsync_grpc_call_duration_ms_bucket[5m])
+          ) > 5000
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "gRPC çağrı süresi çok yüksek"
+          description: "p95 gRPC çağrı süresi 5 saniyeyi aşıyor."
+
+      # 3. Dead Letter Queue birikimi
+      - alert: DeadLetterQueueGrowing
+        expr: shopsync_dead_letter_total > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Dead Letter Queue büyüyor"
+          description: "5'ten fazla sipariş DLQ'da bekliyor. Manuel müdahale gerekli."
+
+      # 4. Kilit bekleme süresi çok yüksek (p95 > 3 saniye)
+      - alert: HighLockContention
+        expr: >
+          histogram_quantile(0.95,
+            rate(shopsync_lock_wait_duration_ms_bucket[5m])
+          ) > 3000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Yüksek kilit çekişmesi (Lock Contention)"
+          description: "Distributed lock bekleme süresi p95 > 3 saniye."
+
+      # 5. Servis sağlık kontrolü başarısız
+      - alert: ServiceUnhealthy
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Servis erişilemez: {{ $labels.job }}"
+          description: "{{ $labels.instance }} 1 dakikadır yanıt vermiyor."
