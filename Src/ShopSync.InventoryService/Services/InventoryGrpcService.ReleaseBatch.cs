@@ -70,16 +70,45 @@ public sealed partial class InventoryGrpcService
 
         try
         {
-            //SKU'lar için kilitleri al (aynı SKU üzerinde eşzamanlı işlemleri önlemek için)
-            await using var lockHandle = await _lockService.AcquireLocksAsync(skus,cancellationToken:context.CancellationToken);
-            var inventoryItems = (await _repository.GetBySkusAsync(skus, context.CancellationToken))
-            .Where(i => i.WarehouseCode == "DEFAULT")
-            .ToList(); // SKU'ları veritabanından al
-            var inventoryMap = inventoryItems.ToDictionary(i => i.Sku.Trim().ToUpperInvariant()); // SKU'ları normalize ederek bir dictionary oluştur key label eşitliği için
+            
+            await using var lockHandle = await _lockService.AcquireLocksAsync(skus, cancellationToken: context.CancellationToken);
+            var allInventoryItems = await _repository.GetBySkusAsync(skus, context.CancellationToken); // MongoDB'den stokları getir
+            var releasePlan = new Dictionary<string, InventoryItem>(); // bu dictionary, hangi SKU'nun hangi stoktan release edileceğini tutacak
+            var missingSkus = new List<string>(); // eksik SKU'ları tutacak
+            var failedItems = new List<FailedItem>(); // release edilemeyen SKU'ları ve nedenlerini tutacak
 
+            
+            foreach (var item in consolidatedItems) 
+            {
+                var stocksForSku = allInventoryItems
+                    .Where(i => i.Sku.Trim().ToUpperInvariant() == item.NormalizedSku)
+                    .ToList(); // Bu SKU'ya ait tüm stokları al
 
-            // 3. Eksik SKU Kontrolü
-            var missingSkus = skus.Where(s => !inventoryMap.ContainsKey(s)).ToList();
+                // Eğer stok yoksa, eksik SKU listesine ekle
+                if (stocksForSku.Count == 0)
+                {
+                    missingSkus.Add(item.OriginalSku);
+                    continue;
+                }
+
+                // HANGİ DEPODA REZERVE EDİLDİĞİNİ BUL (İptal edilecek kadar rezervasyonu olan depo)
+                var suitableStock = stocksForSku.FirstOrDefault(s => s.CanRelease(item.TotalQuantity));
+                if (suitableStock != null)
+                {
+                    releasePlan[item.NormalizedSku] = suitableStock;
+                }
+                else
+                {
+                    failedItems.Add(new FailedItem
+                    {
+                        Sku = item.OriginalSku,
+                        AvailableQuantity = stocksForSku.Sum(s => s.QuantityAvailable),
+                        RequestedQuantity = item.TotalQuantity,
+                        Reason = "İptal edilecek kadar rezervasyon hiçbir depoda bulunamadı"
+                    });
+                }
+            }
+            // Eksik SKU Kontrolü
             if (missingSkus.Count > 0)
             {
                 _logger.LogWarning("Release sırasında SKU'lar bulunamadı: {Skus}", string.Join(", ", missingSkus));
@@ -89,17 +118,7 @@ public sealed partial class InventoryGrpcService
                     Message = $"Şu SKU'lar bulunamadı: {string.Join(", ", missingSkus)}"
                 };
             }
-            // 4. Rezervasyon yeterliliği kontrolü
-            var failedItems = consolidatedItems
-                .Where(item => !inventoryMap[item.NormalizedSku].CanRelease(item.TotalQuantity))
-                .Select(item => new FailedItem
-                {
-                    Sku = item.OriginalSku,
-                    AvailableQuantity = inventoryMap[item.NormalizedSku].QuantityAvailable, // mevcut stok miktarı
-                    RequestedQuantity = item.TotalQuantity,
-                    Reason = "Serbest bırakılacak kadar rezervasyon yok"
-                })
-                .ToList();
+            // Rezervasyon yeterliliği kontrolü
             if (failedItems.Count > 0)
             {
                 _logger.LogWarning("ReleaseBatch başarısız. Yetersiz rezervasyon: {Count} ürün", failedItems.Count);
@@ -110,6 +129,7 @@ public sealed partial class InventoryGrpcService
                     FailedItems = { failedItems }
                 };
             }
+        
 
             using var session = await _dbContext.Client.StartSessionAsync(cancellationToken: context.CancellationToken);
             session.StartTransaction();
@@ -119,7 +139,7 @@ public sealed partial class InventoryGrpcService
                 foreach (var requestedItem in consolidatedItems)
                 {
 
-                    var stock = inventoryMap[requestedItem.NormalizedSku];
+                    var stock = releasePlan[requestedItem.NormalizedSku];
 
 
                     var prevAvailable = stock.QuantityAvailable;

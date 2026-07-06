@@ -30,6 +30,9 @@ public sealed class OrderMetrics
     // Internal, Unimplemented, PermissionDenied, NotFound, Unknown
     private readonly Counter<long> _grpcSystemicErrors;
 
+    private readonly Histogram<double> _expiryDurationMs;
+
+
 
     public OrderMetrics(IMeterFactory meterFactory)
     {
@@ -72,6 +75,11 @@ public sealed class OrderMetrics
         _grpcSystemicErrors = meter.CreateCounter<long>(
             "shopsync_grpc_systemic_errors_total",
             description: "Sistemsel gRPC hata sayısı (bug, config hatası vb.)");
+
+        _expiryDurationMs = meter.CreateHistogram<double>(
+         "shopsync_expiry_duration_ms",
+         unit: "ms",
+         description: "Sipariş oluşturma-expire süresi (milisaniye)");
     }
     // Kullanım metotları
     public void OrderCreated() => _ordersCreated.Add(1);
@@ -91,4 +99,7 @@ public sealed class OrderMetrics
     => _grpcTransientErrors.Add(1, new KeyValuePair<string, object?>("status_code", statusCode));
     public void GrpcSystemicError(string statusCode)
         => _grpcSystemicErrors.Add(1, new KeyValuePair<string, object?>("status_code", statusCode));
+
+    public void RecordExpiryDuration(double ms) => _expiryDurationMs.Record(ms);
+
 }

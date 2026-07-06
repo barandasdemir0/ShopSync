@@ -114,6 +114,8 @@ public sealed class OrderExpirationJob : BackgroundService
                 _logger.LogInformation(
                     "Sipariş expire edildi. OrderId: {OrderId}", order.OrderId);
                 _metrics.OrderExpired();
+                var duration = (DateTime.UtcNow - order.CreatedAt).TotalMilliseconds;
+                _metrics.RecordExpiryDuration(duration);
 
 
 

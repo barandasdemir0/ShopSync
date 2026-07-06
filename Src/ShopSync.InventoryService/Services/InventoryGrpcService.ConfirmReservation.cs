@@ -33,41 +33,45 @@ public sealed partial class InventoryGrpcService
                 skus, cancellationToken: context.CancellationToken);
 
             // MongoDB'den stokları getir
-            var inventoryItems = (await _repository.GetBySkusAsync(skus, context.CancellationToken))
-                .Where(i => i.WarehouseCode == "DEFAULT")
-                .ToList();
-
-            var inventoryMap = inventoryItems
-             .ToDictionary(i => i.Sku.Trim().ToUpperInvariant());
-
+            var allInventoryItems = await _repository.GetBySkusAsync(skus, context.CancellationToken);
+            var confirmPlan = new Dictionary<string, InventoryItem>();
+            var missingSkus = new List<string>();
+            var insufficientSkus = new List<string>();
+            foreach (var item in consolidatedItems)
+            {
+                var stocksForSku = allInventoryItems
+                    .Where(i => i.Sku.Trim().ToUpperInvariant() == item.NormalizedSku)
+                    .ToList();
+                if (stocksForSku.Count == 0)
+                {
+                    missingSkus.Add(item.OriginalSku);
+                    continue;
+                }
+                // Rezerve edilmiş miktarı karşılayan (siparişin beklediği depoyu) bul
+                var suitableStock = stocksForSku.FirstOrDefault(s => s.QuantityReserved >= item.TotalQuantity);
+                if (suitableStock != null)
+                {
+                    confirmPlan[item.NormalizedSku] = suitableStock;
+                }
+                else
+                {
+                    insufficientSkus.Add(item.OriginalSku);
+                }
+            }
             // Eksik SKU kontrolü
-            var missingSkus = skus.Where(s => !inventoryMap.ContainsKey(s)).ToList();
-
             if (missingSkus.Count > 0)
             {
-                _logger.LogWarning(
-                    "ConfirmReservation: SKU'lar bulunamadı: {Skus}",
-                    string.Join(", ", missingSkus));
+                _logger.LogWarning("ConfirmReservation: SKU'lar bulunamadı: {Skus}", string.Join(", ", missingSkus));
                 return new StockOperationResponse
                 {
                     Success = false,
                     Message = $"Şu SKU'lar bulunamadı: {string.Join(", ", missingSkus)}"
                 };
             }
-
-
-            // Rezervasyon yeterliliği kontrolü
-            var insufficientSkus = consolidatedItems
-                .Where(item => inventoryMap[item.NormalizedSku].QuantityReserved < item.TotalQuantity)//rezervasyon miktarı yeterli değilse 
-                .Select(item => item.OriginalSku)
-                .ToList();
-
             // Yetersiz rezervasyon varsa hata döndür
             if (insufficientSkus.Count > 0)
             {
-                _logger.LogWarning(
-                    "ConfirmReservation başarısız. Yetersiz rezervasyon: {Skus}",
-                    string.Join(", ", insufficientSkus));
+                _logger.LogWarning("ConfirmReservation başarısız. Yetersiz rezervasyon: {Skus}", string.Join(", ", insufficientSkus));
                 return new StockOperationResponse
                 {
                     Success = false,
@@ -86,7 +90,7 @@ public sealed partial class InventoryGrpcService
                 foreach (var requestedItem in consolidatedItems)
                 {
 
-                    var stock = inventoryMap[requestedItem.NormalizedSku];
+                    var stock = confirmPlan[requestedItem.NormalizedSku];
                     var prevAvailable = stock.QuantityAvailable;
                     var prevReserved = stock.QuantityReserved;
 

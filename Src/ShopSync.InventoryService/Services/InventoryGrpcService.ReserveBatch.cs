@@ -35,16 +35,47 @@ public sealed partial class InventoryGrpcService
             await using var lockHandle = await _lockService.AcquireLocksAsync(skus, cancellationToken: context.CancellationToken);
 
             // MongoDB'den stokları getir
-            var inventoryItems = (await _repository.GetBySkusAsync(skus, context.CancellationToken))
-            .Where(i => i.WarehouseCode == "DEFAULT")
-            .ToList();
+            var allInventoryItems = await _repository.GetBySkusAsync(skus, context.CancellationToken);
 
-            // Hızlı erişim için Dictionary'ye çevir (SKU → InventoryItem)
-            var inventoryMap = inventoryItems.ToDictionary(i => i.Sku.Trim().ToUpperInvariant());
+            var reservationPlan = new Dictionary<string, InventoryItem>();
+            var missingSkus = new List<string>();
+            var failedItems = new List<FailedItem>();
+
+            foreach (var item in consolidatedItems)
+            {
+
+                // Bu SKU'ya ait tüm depo kayıtları
+                var stocksForSku = allInventoryItems
+                    .Where(i => i.Sku.Trim().ToUpperInvariant() == item.NormalizedSku)
+                    .ToList();
+
+                if (stocksForSku.Count == 0)
+                {
+                    missingSkus.Add(item.OriginalSku);
+                    continue;
+                }
+                // Yeterli stoğu olan HERHANGİ BİR depoyu bul
+                var suitableStock = stocksForSku.FirstOrDefault(s => s.CanReserve(item.TotalQuantity));
+                if (suitableStock != null)
+                {
+                    // Bulunan depoyu plana ekle
+                    reservationPlan[item.NormalizedSku] = suitableStock;
+                }
+                else
+                {
+                    // Hiçbir depoda yeterli stok yoksa hata listesine ekle
+                    failedItems.Add(new FailedItem
+                    {
+                        Sku = item.OriginalSku,
+                        AvailableQuantity = stocksForSku.Sum(s => s.QuantityAvailable), // Tüm depolardaki toplamı göster
+                        RequestedQuantity = item.TotalQuantity,
+                        Reason = "Hiçbir depoda yeterli stok yok"
+                    });
+                }
+
+            }
 
             // Önce eksik SKU'ları kontrol et
-            var missingSkus = skus.Where(s => !inventoryMap.ContainsKey(s)).ToList();
-
             if (missingSkus.Count > 0)
             {
                 _logger.LogWarning("ReserveBatch başarısız. Bulunamayan SKU'lar: {Skus}", string.Join(", ", missingSkus));
@@ -55,18 +86,9 @@ public sealed partial class InventoryGrpcService
                     Message = $"Şu SKU'lar bulunamadı: {string.Join(", ", missingSkus)}"
                 };
             }
-            // Stok yeterliliği kontrolü 
-            var failedItems = consolidatedItems
-                .Where(item => !inventoryMap[item.NormalizedSku].CanReserve(item.TotalQuantity))
-                .Select(item => new FailedItem
-                {
-                    Sku = item.OriginalSku,
-                    AvailableQuantity = inventoryMap[item.NormalizedSku].QuantityAvailable,
-                    RequestedQuantity = item.TotalQuantity,
-                    Reason = "Yetersiz stok"
-                })
-                .ToList();
 
+
+            // Stok yeterliliği kontrolü 
             if (failedItems.Count > 0)
             {
                 _logger.LogWarning("ReserveBatch başarısız. Yetersiz stok: {Count} ürün", failedItems.Count);
@@ -90,7 +112,8 @@ public sealed partial class InventoryGrpcService
                 foreach (var requestedItem in consolidatedItems)
                 {
 
-                    var stock = inventoryMap[requestedItem.NormalizedSku];
+                    var stock = reservationPlan[requestedItem.NormalizedSku];
+
 
 
                     // İşlem öncesi değerleri kaydet
