@@ -95,7 +95,7 @@ services:
     image: mongo:7.0
     container_name: shopsync-mongodb
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - mongodb_data:/data/db
     command: mongod --replSet rs0
@@ -103,8 +103,7 @@ services:
       - shopsync-net
     restart: unless-stopped
     healthcheck:
-      test: >
-        mongosh --quiet --eval "try { rs.status().ok } catch(e) { rs.initiate().ok }"
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'try { rs.initiate() } catch(e) {}; rs.status().ok ? quit(0) : quit(1)'"]
       interval: 10s
       timeout: 5s
       retries: 5

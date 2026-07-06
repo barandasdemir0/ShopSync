@@ -19,7 +19,5 @@ public interface IInventoryGrpcClient
     
 
     // Siparişin envanterini onayla (stoktan kalıcı olarak düş)
-    Task<StockOperationResponse> ConfirmReservationAsync(
-        string orderId,
-        CancellationToken ct = default);
+    Task<StockOperationResponse> ConfirmReservationAsync(string orderId, IEnumerable<ReservationItem> items, CancellationToken ct = default);
 }

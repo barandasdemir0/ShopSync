@@ -21,7 +21,7 @@ public sealed class InventoryGrpcClient : IInventoryGrpcClient
     }
 
 
-    public async Task<StockOperationResponse> ConfirmReservationAsync(string orderId, CancellationToken ct = default)
+    public async Task<StockOperationResponse> ConfirmReservationAsync(string orderId, IEnumerable<ReservationItem> items, CancellationToken ct = default)
     {
         _logger.LogInformation(
              "InventoryService'e ConfirmReservation isteği gönderiliyor. OrderId: {OrderId}",
@@ -35,6 +35,7 @@ public sealed class InventoryGrpcClient : IInventoryGrpcClient
             { 
                 OrderId = orderId 
             };
+            request.Items.AddRange(items); 
             var response = await _client.ConfirmReservationAsync(request, cancellationToken: ct);
             if (!response.Success)
             {

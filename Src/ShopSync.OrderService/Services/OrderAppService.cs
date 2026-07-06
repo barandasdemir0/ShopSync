@@ -245,7 +245,13 @@ public sealed class OrderAppService : IOrderAppService
 
         // InventoryService'e onay gönder → Stok kalıcı olarak düşsün
         _logger.LogInformation("InventoryService'e ConfirmReservation gRPC isteği atılıyor. OrderId: {OrderId}", orderId);
-        var confirmResponse = await _inventoryClient.ConfirmReservationAsync(orderId, ct);
+        var confirmItems = order.LineItems.Select(li => new ReservationItem
+        {
+            Sku = li.Sku,
+            Quantity = li.RequestedQuantity
+        });
+        var confirmResponse = await _inventoryClient.ConfirmReservationAsync(orderId, confirmItems, ct);
+
         if (!confirmResponse.Success)
         {
 

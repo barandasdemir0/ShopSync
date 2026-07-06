@@ -33,8 +33,9 @@ public sealed partial class InventoryGrpcService
                 skus, cancellationToken: context.CancellationToken);
 
             // MongoDB'den stokları getir
-            var inventoryItems = await _repository.GetBySkusAsync(
-                skus, context.CancellationToken);
+            var inventoryItems = (await _repository.GetBySkusAsync(skus, context.CancellationToken))
+                .Where(i => i.WarehouseCode == "DEFAULT")
+                .ToList();
 
             var inventoryMap = inventoryItems
              .ToDictionary(i => i.Sku.Trim().ToUpperInvariant());

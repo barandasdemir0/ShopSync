@@ -181,9 +181,10 @@ public sealed class ReservationExpirationJob : BackgroundService
         await using var lockHandle = await lockService.AcquireLocksAsync(skus, cancellationToken: ct);
 
         // Kilitler alındıktan sonra, SKU'ları veritabanından çek
-        var inventoryItems = await repository.GetBySkusAsync(skus, ct);
-        var inventoryMap = inventoryItems
-            .ToDictionary(i => i.Sku.Trim().ToUpperInvariant()); // SKU'ları normalize ederek dictionary oluştur
+        var inventoryItems = (await repository.GetBySkusAsync(skus, ct))
+           .Where(i => i.WarehouseCode == "DEFAULT")
+           .ToList();
+        var inventoryMap = inventoryItems.ToDictionary(i => i.Sku.Trim().ToUpperInvariant()); // SKU'ları normalize ederek dictionary oluştur
 
         // MongoDB Transaction başlat
         using var session = await dbContext.Client.StartSessionAsync(cancellationToken: ct);

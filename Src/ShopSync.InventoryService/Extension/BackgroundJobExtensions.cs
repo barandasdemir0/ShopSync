@@ -26,6 +26,8 @@ public static class BackgroundJobExtensions
         builder.Services.AddHostedService<LowStockAlertJob>();
         builder.Services.AddHostedService<MongoDbIndexInitializer>();
         builder.Services.AddHostedService<LongHeldLockDetectionJob>();
+        builder.Services.AddHostedService<MongoDbDataSeeder>();
+
 
 
         return builder;

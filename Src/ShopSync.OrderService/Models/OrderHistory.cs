@@ -19,7 +19,8 @@ public sealed class OrderHistory
 
 
     // MongoDB deserialization için gerekli
-    private OrderHistory() { }
+    [BsonConstructor]
+    public OrderHistory() { }
 
     public OrderHistory(OrderStatus status, string? reason = null)
     {

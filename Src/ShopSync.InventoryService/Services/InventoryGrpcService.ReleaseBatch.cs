@@ -72,7 +72,9 @@ public sealed partial class InventoryGrpcService
         {
             //SKU'lar için kilitleri al (aynı SKU üzerinde eşzamanlı işlemleri önlemek için)
             await using var lockHandle = await _lockService.AcquireLocksAsync(skus,cancellationToken:context.CancellationToken);
-            var inventoryItems = await _repository.GetBySkusAsync(skus,context.CancellationToken); // SKU'ları veritabanından al
+            var inventoryItems = (await _repository.GetBySkusAsync(skus, context.CancellationToken))
+            .Where(i => i.WarehouseCode == "DEFAULT")
+            .ToList(); // SKU'ları veritabanından al
             var inventoryMap = inventoryItems.ToDictionary(i => i.Sku.Trim().ToUpperInvariant()); // SKU'ları normalize ederek bir dictionary oluştur key label eşitliği için
 
 
