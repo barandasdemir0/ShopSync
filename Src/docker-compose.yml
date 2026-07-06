@@ -1,34 +1,96 @@
+# ============================================================
+# ShopSync - Docker Compose
+# Tüm servisleri, veritabanlarını ve observability stack'ini
+# tek komutla ayağa kaldırır: docker compose up -d
+# ============================================================
+
 services:
+
+  # ============================================================
+  # UYGULAMA SERVİSLERİ
+  # ============================================================
+
   shopsync.inventoryservice:
     image: ${DOCKER_REGISTRY-}shopsyncinventoryservice
     build:
-      context: ..
-      dockerfile: ShopSync.InventoryService/Dockerfile # Üst klasöre çıkıp InventoryService'e girer
+      context: .
+      dockerfile: ShopSync.InventoryService/Dockerfile
     container_name: shopsync-inventory
     ports:
-      - "5001:5001"
+      - "5001:5001"   # gRPC (HTTP/2)
+      - "5144:5144"   # HTTP (health checks, metrics)
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      # Log ve Metrik Ayarları
       - Loki__Url=http://loki:3100
       - Otlp__Endpoint=http://jaeger:4317
-      # Veritabanı ve Kilit Ayarları (Docker içindeki servis adlarıyla)
-      - MongoDbSettings__ConnectionString=mongodb://mongodb:27017
+      - MongoDbSettings__ConnectionString=mongodb://mongodb:27017/?replicaSet=rs0
       - MongoDbSettings__DatabaseName=shopSync_inventory
       - RedisSettings__ConnectionString=redis:6379
-      # YENİ: BackgroundJob ayarları
       - ExpirationJobSettings__IntervalMinutes=2
       - ExpirationJobSettings__ExpirationMinutes=10
       - ReconciliationJobSettings__IntervalMinutes=60
-      - LowStockAlertSettings__IntervalMinutes=5  
+      - LowStockAlertSettings__IntervalMinutes=5
     depends_on:
-      - mongodb
-      - redis
-      - loki
-      - prometheus
-      - jaeger
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      loki:
+        condition: service_started
+      jaeger:
+        condition: service_started
+    networks:
+      - shopsync-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5144/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
-  # ---- VERİTABANI (Zorunlu) ----
+  shopsync.orderservice:
+    image: ${DOCKER_REGISTRY-}shopsyncorderservice
+    build:
+      context: .
+      dockerfile: ShopSync.OrderService/Dockerfile
+    container_name: shopsync-order
+    ports:
+      - "5160:5160"   # REST API (HTTP)
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5160
+      - Loki__Url=http://loki:3100
+      - Otlp__Endpoint=http://jaeger:4317
+      - MongoDbSettings__ConnectionString=mongodb://mongodb:27017/?replicaSet=rs0
+      - MongoDbSettings__DatabaseName=shopSync_order
+      - RedisSettings__ConnectionString=redis:6379
+      - InventoryGrpcSettings__Address=http://shopsync.inventoryservice:5001
+      - PollySettings__RetryCount=3
+      - PollySettings__RetryBaseDelayMs=200
+      - PollySettings__CircuitBreakerFailureThreshold=5
+      - PollySettings__CircuitBreakerDurationSeconds=30
+    depends_on:
+      shopsync.inventoryservice:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - shopsync-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5160/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ============================================================
+  # VERİTABANLARI
+  # ============================================================
+
   mongodb:
     image: mongo:7.0
     container_name: shopsync-mongodb
@@ -36,69 +98,112 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
-    # Transaction için Replica Set ŞART!
     command: mongod --replSet rs0
+    networks:
+      - shopsync-net
+    restart: unless-stopped
+    healthcheck:
+      test: >
+        mongosh --quiet --eval "try { rs.status().ok } catch(e) { rs.initiate().ok }"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
-  # Mongo Replica Set'i otomatik başlatan init job
-  mongo-init-replica:
-    image: mongo:7.0
-    container_name: shopsync-mongo-init
-    depends_on:
-      - mongodb
-    entrypoint: >
-      bash -c "
-        echo 'Waiting for MongoDB to start...';
-        sleep 5;
-        mongosh --host mongodb --eval '
-          try {
-            rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongodb:27017\" }] });
-            print(\"Replica Set initialized successfully.\");
-          } catch(e) {
-            print(\"Replica Set already initialized or error: \" + e);
-          }
-        ';
-      "
-
-  # ---- REDIS (Zorunlu - Distributed Lock için) ----
   redis:
     image: redis:7.2-alpine
     container_name: shopsync-redis
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - shopsync-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
-  # ---- LOKI (Log Deposu) ----
-  loki:
-    image: grafana/loki:latest
-    container_name: shopsync-loki
-    ports:
-      - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
+  # ============================================================
+  # OBSERVABILITY STACK
+  # ============================================================
 
-  # ---- PROMETHEUS (Metrik Deposu) ----
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.53.0
     container_name: shopsync-prometheus
     ports:
       - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    networks:
+      - shopsync-net
+    restart: unless-stopped
 
-  # ---- JAEGER (Tracing - İzleme) ----
-  jaeger:
-    image: jaegertracing/all-in-one:1.54
-    container_name: shopsync-jaeger
-    ports:
-      - "16686:16686"
-      - "4317:4317"
-
-  # ---- GRAFANA (Görselleştirme Arayüzü) ----
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.1.0
     container_name: shopsync-grafana
     ports:
       - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=shopsync123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
     depends_on:
-      - loki
       - prometheus
+      - loki
       - jaeger
+    networks:
+      - shopsync-net
+    restart: unless-stopped
 
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: shopsync-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - shopsync-net
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.58
+    container_name: shopsync-jaeger
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - shopsync-net
+    restart: unless-stopped
+
+# ============================================================
+# VOLUMES
+# ============================================================
 volumes:
   mongodb_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+# ============================================================
+# NETWORK
+# ============================================================
+networks:
+  shopsync-net:
+    driver: bridge
