@@ -65,7 +65,7 @@ public sealed class OrderAppService : IOrderAppService
         await _orderRepository.UpdateAsync(order, ct);
         _logger.LogWarning("[ADMIN OVERRIDE] Sipariş başarıyla iptal edildi. OrderId: {OrderId}", orderId);
         var response = order.Adapt<OrderResponseDto>();
-        _metrics.OrderExpired();
+        _metrics.OrderCancelled();
         return response;
 
     }
@@ -152,7 +152,8 @@ public sealed class OrderAppService : IOrderAppService
             _logger.LogWarning(
             "İptal edilmek istenen sipariş bulunamadı. OrderId: {OrderId}",
             orderId);
-            throw new ArgumentException($"Sipariş bulunamadı: {orderId}");
+            throw new DomainException($"Sipariş bulunamadı: {orderId}", "ORDER_NOT_FOUND");
+
         }
 
         _logger.LogInformation(
@@ -233,6 +234,7 @@ public sealed class OrderAppService : IOrderAppService
 
     public async Task<OrderResponseDto> ConfirmOrderAsync(string orderId, CancellationToken ct = default)
     {
+        var sw = Stopwatch.StartNew();
         _logger.LogInformation("Sipariş onaylama (Confirm) isteği alındı. OrderId: {OrderId}", orderId);
 
         var order = await _orderRepository.GetByOrderIdAsync(orderId, ct)
@@ -259,6 +261,8 @@ public sealed class OrderAppService : IOrderAppService
         await _orderRepository.UpdateAsync(order, ct);
         _logger.LogInformation("Sipariş onayı MongoDB'ye kaydedildi. OrderId: {OrderId}", orderId);
         _metrics.OrderConfirmed();
+        sw.Stop(); 
+        _metrics.RecordConfirmationDuration(sw.ElapsedMilliseconds); 
         return order.Adapt<OrderResponseDto>();
 
     }

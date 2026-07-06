@@ -1,6 +1,8 @@
-﻿using ShopSync.InventoryService.Protos;
+﻿using OpenTelemetry.Metrics;
+using ShopSync.InventoryService.Protos;
 using ShopSync.OrderService.Infrastructure.DeadLetter;
 using ShopSync.OrderService.Infrastructure.GrpcClients;
+using ShopSync.OrderService.Infrastructure.Telemetry;
 using ShopSync.OrderService.Models;
 using ShopSync.OrderService.Repositories;
 
@@ -11,6 +13,7 @@ public sealed class OrderExpirationJob : BackgroundService
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<OrderExpirationJob> _logger;
+    private readonly OrderMetrics _metrics;
 
     // Kontrol aralığı: 2 dakikada bir çalışır
     private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(2);
@@ -24,10 +27,12 @@ public sealed class OrderExpirationJob : BackgroundService
 
     public OrderExpirationJob(
         IServiceScopeFactory scopeFactory,
-        ILogger<OrderExpirationJob> logger)
+        ILogger<OrderExpirationJob> logger,
+        OrderMetrics metrics)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _metrics = metrics;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -57,6 +62,7 @@ public sealed class OrderExpirationJob : BackgroundService
         var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
         var inventoryClient = scope.ServiceProvider.GetRequiredService<IInventoryGrpcClient>();
         var deadLetterService = scope.ServiceProvider.GetRequiredService<IDeadLetterService>();
+
 
 
         // 10 dakikadan eski PENDING siparişleri getir
@@ -98,6 +104,8 @@ public sealed class OrderExpirationJob : BackgroundService
                         "ReleaseBatch başarısız. OrderId: {OrderId}. " +
                         "Sipariş yine de expire edildi, reconciliation job düzeltecek.",
                         order.OrderId);
+             
+
                 }
 
                 // 3. MongoDB'yi güncelle
@@ -105,6 +113,10 @@ public sealed class OrderExpirationJob : BackgroundService
                 successCount++;
                 _logger.LogInformation(
                     "Sipariş expire edildi. OrderId: {OrderId}", order.OrderId);
+                _metrics.OrderExpired();
+
+
+
             }
             catch (Exception ex)
             {
@@ -114,6 +126,7 @@ public sealed class OrderExpirationJob : BackgroundService
                     order.OrderId);
                 // Dead Letter Queue'ya taşı
                 await deadLetterService.EnqueueAsync(order, ex.Message, ct);
+                _metrics.DeadLetterEnqueued();
             }
 
 

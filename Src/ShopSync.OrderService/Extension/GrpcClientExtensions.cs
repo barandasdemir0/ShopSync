@@ -5,6 +5,7 @@ using Polly.Retry;
 using ShopSync.InventoryService.Protos;
 using ShopSync.OrderService.Configuration;
 using ShopSync.OrderService.Infrastructure.GrpcClients;
+using ShopSync.OrderService.Infrastructure.Telemetry;
 
 
 
@@ -19,9 +20,11 @@ public static class GrpcClientExtensions
             .GetSection("PollySettings")
             .Get<PollySettings>() ?? new PollySettings();
 
+
+
         builder.Services.AddGrpcClient<InventoryGrpc.InventoryGrpcClient>((serviceProvider, options) =>
         {
-            // InventoryService'in gRPC adresi (Örn: "http://localhost:5001")
+           
             var grpcSettings = serviceProvider.GetRequiredService<IOptions<InventoryGrpcSettings>>().Value;
             options.Address = new Uri(grpcSettings.Address);
         }).AddResilienceHandler("inventory-resilience", (resilienceBuilder, handlerContext) =>
@@ -47,8 +50,11 @@ public static class GrpcClientExtensions
 
             });
 
+            var metrics = handlerContext.ServiceProvider.GetService<OrderMetrics>();
             resilienceBuilder.AddCircuitBreaker(new CircuitBreakerStrategyOptions<HttpResponseMessage>
             {
+
+
                 FailureRatio = 0.5, // %50 başarısızlık durumunda devre kesici açılır  10 istekten 5'i başarısız olursa devre kesici açılır
                 MinimumThroughput = pollySettings.CircuitBreakerFailureThreshold, //circuit breaker'ın açılabilmesi için minimum istek sayısı
                 SamplingDuration = TimeSpan.FromSeconds(30), // Örnekleme süresi (30 saniye boyunca gelen istekler değerlendirilir)
@@ -59,18 +65,27 @@ public static class GrpcClientExtensions
                     logger?.LogError(
                         "CIRCUIT BREAKER AÇILDI! InventoryService'e istek gönderimi {Duration}s durduruldu.",
                         pollySettings.CircuitBreakerDurationSeconds);
+
+                   
+                    metrics?.CircuitBreakerStateChanged("Open");
+
                     return ValueTask.CompletedTask;
                 },
                 OnClosed = args =>
                 {
                     
                     logger?.LogInformation("Circuit Breaker kapandı. InventoryService iletişimi normale döndü.");
+
+
+                    metrics?.CircuitBreakerStateChanged("Closed");
                     return ValueTask.CompletedTask;
                 },
                 OnHalfOpened = args =>
                 {
                     
                     logger?.LogInformation("Circuit Breaker yarı açık. Deneme isteği gönderiliyor...");
+                 
+                    metrics?.CircuitBreakerStateChanged("HalfOpen");
                     return ValueTask.CompletedTask;
                 }
             });
