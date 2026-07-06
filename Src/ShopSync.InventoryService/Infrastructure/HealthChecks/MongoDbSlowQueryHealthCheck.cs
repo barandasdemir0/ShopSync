@@ -18,7 +18,7 @@ public sealed class MongoDbSlowQueryHealthCheck:IHealthCheck
         try
         {
             // bu kontrol, MongoDB'nin profil verilerini kullanarak son 5 dakikada 500ms'den uzun süren sorguları sayar.
-            var db = _context.Client.GetDatabase("shopSync_order");
+            var db = _context.Client.GetDatabase("shopSync_inventory");
             // alt sorgu: system.profile koleksiyonunu kullanarak yavaş sorguları sayar
             var profileCollection = db.GetCollection<BsonDocument>("system.profile");
 

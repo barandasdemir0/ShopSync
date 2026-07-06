@@ -11,7 +11,17 @@ public sealed partial class InventoryGrpcService
     {
         var normalizedSku = request.Sku.Trim().ToUpperInvariant();
 
-        var normalizedWarehouse = request.WarehouseCode.Trim().ToUpperInvariant();
+        string normalizedWarehouse;
+  
+
+        if (string.IsNullOrWhiteSpace(request.WarehouseCode))
+        {
+            normalizedWarehouse = "DEFAULT";
+        }
+        else
+        {
+            normalizedWarehouse = request.WarehouseCode.Trim().ToUpperInvariant();
+        }
 
         _logger.LogWarning(
             "DeleteInventoryItem isteği alındı. SKU: {Sku}, Depo: {Warehouse}. Bu kayıt kalıcı olarak silinecek.",
@@ -88,10 +98,17 @@ public sealed partial class InventoryGrpcService
                     };
                 }
 
+                var logQuantity = stock.QuantityAvailable;
+                // Stok 0 ise, log tablosunun hata vermemesi için miktarı 1 yapıyoruz
+                if (logQuantity == 0)
+                {
+                    logQuantity = 1;
+                }
+
                 var transactionLog = new InventoryTransactionLog(
                     sku: normalizedSku,
                     transactionType: InventoryTransactionType.Decrease,
-                    quantity: stock.QuantityAvailable,
+                     quantity: logQuantity, 
                     previousAvailable: stock.QuantityAvailable,
                     newAvailable: 0,
                     previousReserved: stock.QuantityReserved,

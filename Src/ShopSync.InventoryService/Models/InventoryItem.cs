@@ -1,8 +1,6 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using ShopSync.InventoryService.Exceptions;
-using System.Reflection.Metadata;
-using System.Runtime.Intrinsics.X86;
 
 namespace ShopSync.InventoryService.Models;
 
