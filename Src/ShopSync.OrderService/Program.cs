@@ -32,6 +32,9 @@ try
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
 
+    builder.Services.AddCustomRateLimiting(builder.Configuration);
+
+
 
 
 
@@ -44,7 +47,11 @@ try
 
 
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers().AddJsonOptions(options =>
+    {
+        // Tarih dönüştürücümüzü JSON ayarlarına ekliyoruz
+        options.JsonSerializerOptions.Converters.Add(new ShopSync.OrderService.Extension.DateTimeJsonConverter());
+    });
     builder.Services.AddOpenApi();
 
 
@@ -55,17 +62,13 @@ try
         app.MapOpenApi();
         app.MapScalarApiReference();
     }
+    app.UseRateLimiter();
 
     app.UseExceptionHandler();
 
     app.UseMonitoring();
     app.UseHealthCheckEndpoints();
     app.MapControllers();
-
-
-    app.MapGet("/", () => "Hello World!");
-
-
 
     app.Run();
 }
