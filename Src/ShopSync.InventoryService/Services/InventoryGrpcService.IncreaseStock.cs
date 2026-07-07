@@ -31,8 +31,18 @@ public sealed partial class InventoryGrpcService
                 cancellationToken: context.CancellationToken);
 
             // MongoDB'den mevcut stok bilgisini getir
-            var stock = await _repository.GetBySkuAsync(
-                normalizedSku, context.CancellationToken);
+            string targetWarehouse;
+
+            if (string.IsNullOrWhiteSpace(request.WarehouseCode))
+            {
+                targetWarehouse = "DEFAULT";
+            }
+            else
+            {
+                targetWarehouse = request.WarehouseCode;
+            }
+            var stock = await _repository.GetBySkuAndWarehouseAsync(
+             normalizedSku, targetWarehouse, context.CancellationToken);
 
 
 

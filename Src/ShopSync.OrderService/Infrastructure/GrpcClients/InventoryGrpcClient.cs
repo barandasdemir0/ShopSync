@@ -134,7 +134,7 @@ public sealed class InventoryGrpcClient : IInventoryGrpcClient
                 Sku = sku, 
                 Quantity = quantity, 
                 Reason = reason ,
-                //WarehouseCode = warehouseCode
+                WarehouseCode = warehouseCode
             };
             var response = await _client.DecreaseStockAsync(request, cancellationToken: ct);
             return response;
@@ -216,7 +216,7 @@ public sealed class InventoryGrpcClient : IInventoryGrpcClient
                 Sku = sku,
                 Quantity = quantity,
                 Reason = reason,
-               // WarehouseCode = warehouseCode
+                WarehouseCode = warehouseCode
             };
             var response = await _client.IncreaseStockAsync(request, cancellationToken: ct);
             return response;

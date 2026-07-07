@@ -62,7 +62,7 @@
 		<Protobuf Include="ProtosTemp\inventory.proto" GrpcServices="Client" />
 	</ItemGroup>
 
-	<!--BSR (Buf) sistmeleri var bu yöntemdan daha güvenilir mantıklı-->
+	<!--BSR (Buf) sistmeleri var bu yöntemdan daha güvenilir mantıklı bu sistemde yani githubda çekmede cache sorunları olabilir 5 dk beklemek gibi-->
 
 
 </Project>

@@ -77,7 +77,7 @@ public class InventoryController : ControllerBase
     [HttpPost("stock/increase")]
     public async Task<IActionResult> IncreaseStock([FromBody] IncreaseStockDto request, CancellationToken ct)
     {
-        var response = await _inventoryClient.IncreaseStockAsync(request.Sku, request.Quantity, request.Reason, ct);
+        var response = await _inventoryClient.IncreaseStockAsync(request.Sku, request.Quantity, request.Reason, request.WarehouseCode, ct);
         if (!response.Success)
         {
             return StatusCode(500, response);
@@ -91,7 +91,7 @@ public class InventoryController : ControllerBase
     [HttpPost("stock/decrease")]
     public async Task<IActionResult> DecreaseStock([FromBody] DecreaseStockDto request, CancellationToken ct)
     {
-        var response = await _inventoryClient.DecreaseStockAsync(request.Sku, request.Quantity, request.Reason, ct);
+        var response = await _inventoryClient.DecreaseStockAsync(request.Sku, request.Quantity, request.Reason, request.WarehouseCode, ct);
         if (!response.Success)
         {
             return StatusCode(500, response);
