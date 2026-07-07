@@ -11,10 +11,12 @@ public sealed partial class InventoryGrpcService
         
         _logger.LogInformation("GetStock isteği: {Sku}", request.Sku); // gelen GetStock isteğinin SKU bilgisini logla.
 
-        var item = await _repository.GetBySkuAsync(request.Sku,context.CancellationToken); // SKU'ya göre envanter öğesini veritabanından al.
+        // Sadece ilk depoyu değil, bu SKU'nun olduğu TÜM depoları (Liste halinde) getiriyoruz
+        var items = await _repository.GetBySkuAllWarehousesAsync(request.Sku, context.CancellationToken);
+
 
         // Eğer öğe bulunamazsa, Found alanını false olarak ayarla ve miktarları 0 olarak döndür.
-        if (item == null)
+        if (items == null || items.Count == 0)
         {
             return new GetStockResponse
             {
@@ -24,12 +26,17 @@ public sealed partial class InventoryGrpcService
                 Found = false
             };
         }
-        // Eğer öğe bulunursa, Found alanını true olarak ayarla ve miktarları döndür.
+
+        // Tüm depolardaki mevcut ve rezerve stokları topluyoruz
+        var totalAvailable = items.Sum(x => x.QuantityAvailable);
+        var totalReserved = items.Sum(x => x.QuantityReserved);
+
+        // Toplam stok miktarını dönüyoruz
         return new GetStockResponse
         {
-            Sku = item.Sku,
-            AvailableQuantity = item.QuantityAvailable,
-            ReservedQuantity = item.QuantityReserved,
+            Sku = request.Sku,
+            AvailableQuantity = totalAvailable,
+            ReservedQuantity = totalReserved,
             Found = true
         };
     }

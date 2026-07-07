@@ -249,6 +249,25 @@ public sealed class InventoryItem
         }
     }
 
+    //  Bu metot, snapshot geri yükleme işleminde stokların ve rezerve miktarların birebir ezilmesini sağlar.
+    public void RestoreSnapshotState(int quantityAvailable, int quantityReserved)
+    {
+        if (quantityAvailable < 0)
+        {
+            throw new ArgumentException("Geri yüklenen mevcut stok negatif olamaz.", nameof(quantityAvailable));
+        }
+            
+
+        if (quantityReserved < 0)
+        {
+            throw new ArgumentException("Geri yüklenen rezerve stok negatif olamaz.", nameof(quantityReserved));
+        }
+
+        QuantityAvailable = quantityAvailable;
+        QuantityReserved = quantityReserved;
+        Touch();
+    }
+
     // Bu metot, güncellenme tarihini günceller.
     private void Touch()
     {

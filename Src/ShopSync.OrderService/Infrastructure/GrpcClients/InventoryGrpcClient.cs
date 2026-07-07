@@ -61,7 +61,208 @@ public sealed class InventoryGrpcClient : IInventoryGrpcClient
 
     }
 
+    public async Task<StockOperationResponse> CreateInventoryItemAsync(string sku, int initialQuantity, string warehouseCode, int lowStockThreshold, CancellationToken ct = default)
+    {
+        _logger.LogInformation("InventoryService'e CreateInventoryItem isteği gönderiliyor. SKU: {Sku}", sku);
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var request = new CreateInventoryItemRequest 
+            { 
+                Sku = sku, 
+                InitialQuantity = initialQuantity, 
+                WarehouseCode = warehouseCode,
+                LowStockThreshold = lowStockThreshold 
+            };
+            var response = await _client.CreateInventoryItemAsync(request, cancellationToken: ct);
+            return response;
+        }
+        catch (RpcException ex)
+        {
+            _logger.LogError(ex, "CreateInventoryItem gRPC hatası. SKU: {Sku}, Status: {Status}", sku, ex.StatusCode);
+            RecordGrpcErrorMetrics(ex.StatusCode);
+            throw;
+        }
+        finally 
+        { 
+            sw.Stop(); 
+            _metrics.RecordGrpcCallDuration(sw.ElapsedMilliseconds);
+        }
+    }
 
+    public async Task<CreateSnapshotResponse> CreateSnapshotAsync(string description, CancellationToken ct = default)
+    {
+        _logger.LogInformation("InventoryService'e CreateSnapshot isteği gönderiliyor. Açıklama: {Description}", description);
+        // Stopwatch ile süreyi ölçmeye başla
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var request = new CreateSnapshotRequest 
+            { 
+                Description = description 
+            };
+            var response = await _client.CreateSnapshotAsync(request, cancellationToken: ct);
+            if (!response.Success)
+            {
+                _logger.LogWarning("CreateSnapshot başarısız. Mesaj: {Message}", response.Message);
+            }
+            return response;
+        }
+        catch (RpcException ex)
+        {
+            _logger.LogError(ex, "CreateSnapshot gRPC hatası. Status: {Status}", ex.StatusCode);
+            RecordGrpcErrorMetrics(ex.StatusCode);
+            throw;
+        }
+        finally
+        {
+            sw.Stop();
+            _metrics.RecordGrpcCallDuration(sw.ElapsedMilliseconds);
+        }
+    }
+
+
+    //bu metot, stok azaltma işlemi için gRPC çağrısı yapar ve hata durumlarını loglar.
+    public async Task<StockOperationResponse> DecreaseStockAsync(string sku, int quantity, string reason, string warehouseCode, CancellationToken ct = default)
+    {
+        _logger.LogInformation("InventoryService'e DecreaseStock isteği gönderiliyor. SKU: {Sku}", sku);
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var request = new DecreaseStockRequest 
+            { 
+                Sku = sku, 
+                Quantity = quantity, 
+                Reason = reason ,
+                //WarehouseCode = warehouseCode
+            };
+            var response = await _client.DecreaseStockAsync(request, cancellationToken: ct);
+            return response;
+        }
+        catch (RpcException ex)
+        {
+            _logger.LogError(ex, "DecreaseStock gRPC hatası. SKU: {Sku}, Status: {Status}", sku, ex.StatusCode);
+            RecordGrpcErrorMetrics(ex.StatusCode);
+            throw;
+        }
+        finally 
+        { 
+            sw.Stop();
+            _metrics.RecordGrpcCallDuration(sw.ElapsedMilliseconds); 
+        }
+    }
+
+    public async Task<StockOperationResponse> DeleteInventoryItemAsync(string sku, string warehouseCode, CancellationToken ct = default)
+    {
+        _logger.LogInformation("InventoryService'e DeleteInventoryItem isteği gönderiliyor. SKU: {Sku}", sku);
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var request = new DeleteInventoryItemRequest 
+            { 
+                Sku = sku, 
+                WarehouseCode = warehouseCode 
+            };
+            var response = await _client.DeleteInventoryItemAsync(request, cancellationToken: ct);
+            return response;
+        }
+        catch (RpcException ex)
+        {
+            _logger.LogError(ex, "DeleteInventoryItem gRPC hatası. SKU: {Sku}, Status: {Status}", sku, ex.StatusCode);
+            RecordGrpcErrorMetrics(ex.StatusCode);
+            throw;
+        }
+        finally 
+        { 
+            sw.Stop(); 
+            _metrics.RecordGrpcCallDuration(sw.ElapsedMilliseconds);  //elapsed milliseconds: geçen süreyi milisaniye cinsinden kaydet
+        }
+    }
+
+    public async Task<GetStockResponse> GetStockAsync(string sku, CancellationToken ct = default)
+    {
+        _logger.LogInformation("InventoryService'e GetStock isteği gönderiliyor. SKU: {Sku}", sku);
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var request = new GetStockRequest 
+            { 
+                Sku = sku 
+            };
+            var response = await _client.GetStockAsync(request, cancellationToken: ct);
+            return response;
+        }
+        catch (RpcException ex)
+        {
+            _logger.LogError(ex, "GetStock gRPC hatası. SKU: {Sku}, Status: {Status}", sku, ex.StatusCode);
+            RecordGrpcErrorMetrics(ex.StatusCode);
+            throw;
+        }
+        finally
+        {
+            sw.Stop();
+            _metrics.RecordGrpcCallDuration(sw.ElapsedMilliseconds);
+        }
+    }
+
+    public async Task<StockOperationResponse> IncreaseStockAsync(string sku, int quantity, string reason, string warehouseCode, CancellationToken ct = default)
+    {
+        _logger.LogInformation("InventoryService'e IncreaseStock isteği gönderiliyor. SKU: {Sku}", sku);
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var request = new IncreaseStockRequest
+            {
+                Sku = sku,
+                Quantity = quantity,
+                Reason = reason,
+               // WarehouseCode = warehouseCode
+            };
+            var response = await _client.IncreaseStockAsync(request, cancellationToken: ct);
+            return response;
+        }
+        catch (RpcException ex)
+        {
+            _logger.LogError(ex, "IncreaseStock gRPC hatası. SKU: {Sku}, Status: {Status}", sku, ex.StatusCode);
+            RecordGrpcErrorMetrics(ex.StatusCode);
+            throw;
+        }
+        finally 
+        { 
+            sw.Stop();
+            _metrics.RecordGrpcCallDuration(sw.ElapsedMilliseconds); 
+        }
+    }
+
+    //bu metot, stok dengeleme işlemi için gRPC çağrısı yapar ve hata durumlarını loglar.
+    public async Task<StockOperationResponse> RebalanceStockAsync(string sku, int quantity, string fromLocation, string toLocation, string reason, CancellationToken ct = default)
+    {
+        _logger.LogInformation("InventoryService'e RebalanceStock isteği gönderiliyor. SKU: {Sku}", sku);
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var request = new RebalanceStockRequest 
+            { 
+                Sku = sku, 
+                Quantity = quantity, 
+                FromLocation = fromLocation, 
+                ToLocation = toLocation, 
+                Reason = reason 
+            };
+            var response = await _client.RebalanceStockAsync(request, cancellationToken: ct);
+            return response;
+        }
+        catch (RpcException ex)
+        {
+            _logger.LogError(ex, "RebalanceStock gRPC hatası. SKU: {Sku}, Status: {Status}", sku, ex.StatusCode);
+            RecordGrpcErrorMetrics(ex.StatusCode);
+            throw;
+        }
+        finally 
+        { 
+            sw.Stop(); _metrics.RecordGrpcCallDuration(sw.ElapsedMilliseconds); 
+        }
+    }
 
     public async Task<ReleaseBatchResponse> ReleaseBatchAsync(string orderId, IEnumerable<ReservationItem> items, CancellationToken ct = default)
     {
@@ -143,7 +344,34 @@ public sealed class InventoryGrpcClient : IInventoryGrpcClient
         }
     }
 
-  
+    public async Task<StockOperationResponse> RestoreSnapshotAsync(string snapshotId, CancellationToken ct = default)
+    {
+        _logger.LogInformation("InventoryService'e RestoreSnapshot isteği gönderiliyor. SnapshotId: {SnapshotId}", snapshotId);
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var request = new RestoreSnapshotRequest { SnapshotId = snapshotId };
+            var response = await _client.RestoreSnapshotAsync(request, cancellationToken: ct);
+            if (!response.Success)
+            {
+                _logger.LogWarning("RestoreSnapshot başarısız. SnapshotId: {SnapshotId}, Mesaj: {Message}", snapshotId, response.Message);
+            }
+            return response;
+        }
+        catch (RpcException ex)
+        {
+            _logger.LogError(ex, "RestoreSnapshot gRPC hatası. SnapshotId: {SnapshotId}, Status: {Status}", snapshotId, ex.StatusCode);
+            RecordGrpcErrorMetrics(ex.StatusCode);
+            throw;
+        }
+        finally
+        {
+            sw.Stop();
+            _metrics.RecordGrpcCallDuration(sw.ElapsedMilliseconds);
+        }
+    }
+
+
 
     // Ortak hata ayıklama metodu (Geçici hata mı, sistemsel mi?)
     private void RecordGrpcErrorMetrics(StatusCode statusCode)

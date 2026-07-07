@@ -65,19 +65,11 @@ public sealed partial class InventoryGrpcService
                     var prevReserved = current.QuantityReserved;
 
 
-                    // Stokları snapshot değerleriyle güncelle
-                    var availableDiff = snapshotItem.QuantityAvailable - current.QuantityAvailable;
-                    // alttaki if bloğu ile stokları artırma veya azaltma işlemi yapılıyor
-                    if (availableDiff > 0)
-                    {
-                        current.IncreaseStock(availableDiff);
-                    }
+                    // Mevcut ve Rezerve stokları snapshot değerleriyle birebir eziyoruz (güncelliyoruz)
+                    current.RestoreSnapshotState(snapshotItem.QuantityAvailable, snapshotItem.QuantityReserved);
 
-                    // Reserved stokları snapshot değerleriyle güncelle
-                    else if (availableDiff < 0)
-                    {
-                        current.DecreaseStock(Math.Abs(availableDiff));
-                    }
+                    // Aşağıdaki log işlemleri için availableDiff'i hesaplıyoruz
+                    var availableDiff = snapshotItem.QuantityAvailable - prevAvailable;
 
 
                     await _repository.UpdateAsync(current, session, context.CancellationToken);
