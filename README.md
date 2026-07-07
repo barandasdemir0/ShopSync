@@ -2,6 +2,7 @@
 
 # 🚀 ShopSync: Kurumsal Seviye Mikroservis Mimarisi, DDD ve Yüksek Yük Testi (K6) Referans Kılavuzu
 **Saniyede Binlerce İsteğe Dayanan, Dağıtık, Hata Toleranslı (Resilient) ve Tam Gözlemlenebilir E-Ticaret Arka Uç (Backend) Sistemi**
+Bu Proje Rasyonet Stajı Bünyesinde geliştirdiğim 2.projedir.
 
 <p align="center">
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 10" />
