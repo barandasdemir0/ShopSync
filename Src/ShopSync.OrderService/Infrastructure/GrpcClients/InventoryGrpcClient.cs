@@ -10,16 +10,18 @@ public sealed class InventoryGrpcClient : IInventoryGrpcClient
     private readonly InventoryGrpc.InventoryGrpcClient _client;
     private readonly ILogger<InventoryGrpcClient> _logger;
     private readonly OrderMetrics _metrics;
+    private readonly Polly.ResiliencePipeline _pipeline; // YENİ EKLENDİ
     public InventoryGrpcClient(
         InventoryGrpc.InventoryGrpcClient client,
         ILogger<InventoryGrpcClient> logger,
-        OrderMetrics metrics)
+        OrderMetrics metrics,
+        Polly.Registry.ResiliencePipelineProvider<string> pipelineProvider) // YENİ EKLENDİ
     {
         _client = client;
         _logger = logger;
         _metrics = metrics;
+        _pipeline = pipelineProvider.GetPipeline("inventory-pipeline"); // YENİ EKLENDİ
     }
-
 
     public async Task<StockOperationResponse> ConfirmReservationAsync(string orderId, IEnumerable<ReservationItem> items, CancellationToken ct = default)
     {
@@ -35,8 +37,9 @@ public sealed class InventoryGrpcClient : IInventoryGrpcClient
             { 
                 OrderId = orderId 
             };
-            request.Items.AddRange(items); 
-            var response = await _client.ConfirmReservationAsync(request, cancellationToken: ct);
+            request.Items.AddRange(items);
+            var response = await _pipeline.ExecuteAsync(async token =>
+                await _client.ConfirmReservationAsync(request, cancellationToken: token), ct);
             if (!response.Success)
             {
                 _logger.LogWarning(
@@ -319,7 +322,8 @@ public sealed class InventoryGrpcClient : IInventoryGrpcClient
 
             request.Items.AddRange(items);
 
-            var response = await _client.ReserveBatchAsync(request, cancellationToken: ct);
+            var response = await _pipeline.ExecuteAsync(async token =>
+            await _client.ReserveBatchAsync(request, cancellationToken: token), ct);
 
             if (!response.Success)
             {

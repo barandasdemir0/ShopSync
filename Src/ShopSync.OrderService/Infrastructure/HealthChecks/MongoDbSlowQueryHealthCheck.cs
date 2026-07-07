@@ -2,16 +2,26 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
 using ShopSync.OrderService.Infrastructure.Persistence;
+using System.Diagnostics.Metrics;
 
 namespace ShopSync.OrderService.Infrastructure.HealthChecks;
 
 public sealed class MongoDbSlowQueryHealthCheck:IHealthCheck
 {
     private readonly MongoDbContext _context;
-    public MongoDbSlowQueryHealthCheck(MongoDbContext context)
+    private readonly Counter<long> _slowQueryCounter;
+
+    public MongoDbSlowQueryHealthCheck(MongoDbContext context, IMeterFactory meterFactory)
     {
         _context = context;
+        var meter = meterFactory.Create("ShopSync.OrderService");
+        // Sayaç burada tanımlanıyor!
+        _slowQueryCounter = meter.CreateCounter<long>(
+            "shopsync_mongodb_slow_queries_total",
+            description: "MongoDB yavaş sorgu (>500ms) sayısı");
     }
+
+
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context, CancellationToken cancellationToken = default)
     {
@@ -31,6 +41,12 @@ public sealed class MongoDbSlowQueryHealthCheck:IHealthCheck
             // yavaş sorgu sayısını al
             var slowQueryCount = await profileCollection.CountDocumentsAsync(
                 filter, cancellationToken: cancellationToken);
+
+            if (slowQueryCount > 0)
+            {
+                _slowQueryCounter.Add(slowQueryCount);
+            }
+
             // eğer yavaş sorgu sayısı 10'dan fazla ise, sağlık durumu bozuk olarak işaretle
             if (slowQueryCount > 10)
             {

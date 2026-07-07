@@ -181,10 +181,10 @@ public sealed class ReservationExpirationJob : BackgroundService
         await using var lockHandle = await lockService.AcquireLocksAsync(skus, cancellationToken: ct);
 
         // Kilitler alındıktan sonra, SKU'ları veritabanından çek
-        var inventoryItems = (await repository.GetBySkusAsync(skus, ct))
-           .Where(i => i.WarehouseCode == "DEFAULT")
-           .ToList();
-        var inventoryMap = inventoryItems.ToDictionary(i => i.Sku.Trim().ToUpperInvariant()); // SKU'ları normalize ederek dictionary oluştur
+        var inventoryItems = (await repository.GetBySkusAsync(skus, ct));
+        var inventoryMap = inventoryItems
+            .GroupBy(i => i.Sku.Trim().ToUpperInvariant())
+            .ToDictionary(g => g.Key, g => g.ToList()); // SKU'ları normalize ederek dictionary oluştur
 
         // MongoDB Transaction başlat
         using var session = await dbContext.Client.StartSessionAsync(cancellationToken: ct);
@@ -197,44 +197,36 @@ public sealed class ReservationExpirationJob : BackgroundService
                 // SKU veritabanında bulunamazsa atla 
                 if (!inventoryMap.ContainsKey(item.NormalizedSku))
                 {
-                    _logger.LogWarning(
-                        "Expiration: SKU bulunamadı, atlanıyor. SKU: {Sku}",
-                        item.NormalizedSku);
+                    _logger.LogWarning("Expiration: SKU bulunamadı, atlanıyor. SKU: {Sku}", item.NormalizedSku);
                     continue;
                 }
-
-                var stock = inventoryMap[item.NormalizedSku];
-                var prevAvailable = stock.QuantityAvailable;
-                var prevReserved = stock.QuantityReserved;
-
-                var releaseQuantity = Math.Min(item.TotalQuantity, stock.QuantityReserved);
-
-                if (releaseQuantity <= 0)
+                var stocksForSku = inventoryMap[item.NormalizedSku];
+                var remainingToRelease = item.TotalQuantity;
+                // O SKU'ya ait depoları dön, hangisinde Reserved stok varsa ondan düş
+                foreach (var stock in stocksForSku.Where(s => s.QuantityReserved > 0))
                 {
-                    _logger.LogDebug(
-                        "Expiration: Zaten serbest bırakılmış, atlanıyor. SKU: {Sku}",
-                        item.NormalizedSku);
-                    continue;
+                    if (remainingToRelease <= 0) break; // İade edilecek miktar bittiyse çık
+                    var prevAvailable = stock.QuantityAvailable;
+                    var prevReserved = stock.QuantityReserved;
+                    var releaseQuantity = Math.Min(remainingToRelease, stock.QuantityReserved);
+
+                    stock.Release(releaseQuantity);
+                    remainingToRelease -= releaseQuantity;
+                    await repository.UpdateAsync(stock, session, ct);
+                    var log = new InventoryTransactionLog(
+                        sku: item.NormalizedSku,
+                        transactionType: InventoryTransactionType.Expiration,
+                        quantity: releaseQuantity,
+                        previousAvailable: prevAvailable,
+                        newAvailable: stock.QuantityAvailable,
+                        previousReserved: prevReserved,
+                        newReserved: stock.QuantityReserved,
+                        orderId: orderId,
+                        reason: $"Rezervasyon süresi doldu ({_settings.ExpirationMinutes} dk)");
+
+                    await repository.AddTransactionLogAsync(log, session, ct);
+
                 }
-
-                stock.Release(releaseQuantity);
-
-
-
-                await repository.UpdateAsync(stock, session, ct);
-
-                var log = new InventoryTransactionLog(
-                    sku: item.NormalizedSku,
-                    transactionType: InventoryTransactionType.Expiration,
-                    quantity: releaseQuantity,
-                    previousAvailable: prevAvailable,
-                    newAvailable: stock.QuantityAvailable,
-                    previousReserved: prevReserved,
-                    newReserved: stock.QuantityReserved,
-                    orderId: orderId,
-                    reason: $"Rezervasyon süresi doldu ({_settings.ExpirationMinutes} dk)");
-                await repository.AddTransactionLogAsync(log, session, ct);
-
             }
 
             await session.CommitTransactionAsync(ct);

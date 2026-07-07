@@ -1,4 +1,4 @@
-﻿using Grpc.Core;
+using Grpc.Core;
 using ShopSync.InventoryService.Models;
 using ShopSync.InventoryService.Protos;
 
@@ -55,7 +55,10 @@ public sealed partial class InventoryGrpcService
                     continue;
                 }
                 // Yeterli stoğu olan HERHANGİ BİR depoyu bul
-                var suitableStock = stocksForSku.FirstOrDefault(s => s.CanReserve(item.TotalQuantity));
+                var suitableStock = stocksForSku
+                    .OrderByDescending(s => s.WarehouseCode == "DEFAULT")
+                    .FirstOrDefault(s => s.CanReserve(item.TotalQuantity)); 
+
                 if (suitableStock != null)
                 {
                     // Bulunan depoyu plana ekle

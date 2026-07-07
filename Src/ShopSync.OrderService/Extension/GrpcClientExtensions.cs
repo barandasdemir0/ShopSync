@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Grpc.Core;
+using Microsoft.Extensions.Options;
 using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
@@ -15,82 +16,64 @@ public static class GrpcClientExtensions
 {
     public static WebApplicationBuilder AddGrpcClients(this WebApplicationBuilder builder)
     {
-        // Polly ayarlarını oku
         var pollySettings = builder.Configuration
             .GetSection("PollySettings")
             .Get<PollySettings>() ?? new PollySettings();
-
-
-
+       
         builder.Services.AddGrpcClient<InventoryGrpc.InventoryGrpcClient>((serviceProvider, options) =>
         {
-           
             var grpcSettings = serviceProvider.GetRequiredService<IOptions<InventoryGrpcSettings>>().Value;
             options.Address = new Uri(grpcSettings.Address);
-        }).AddResilienceHandler("inventory-resilience", (resilienceBuilder, handlerContext) =>
+        });
+        // 2. Sistemin Her Yerinden Çağrılabilir "Global" Polly Kalkanı Kuruluyor
+        builder.Services.AddResiliencePipeline("inventory-pipeline", (resilienceBuilder, context) =>
         {
-
-            var logger = handlerContext.ServiceProvider.GetService<ILogger<InventoryGrpc.InventoryGrpcClient>>();
-
-            resilienceBuilder.AddRetry(new RetryStrategyOptions<HttpResponseMessage>
+            var logger = context.ServiceProvider.GetService<ILogger<InventoryGrpcClient>>();
+            var metrics = context.ServiceProvider.GetService<OrderMetrics>();
+            resilienceBuilder.AddRetry(new RetryStrategyOptions
             {
+                // SADECE RpcException fırlarsa yakala (Çünkü gRPC bağlantı hataları hep RpcException'dır!)
+                ShouldHandle = args => ValueTask.FromResult(args.Outcome.Exception is RpcException),
                 MaxRetryAttempts = pollySettings.RetryCount,
-                BackoffType = DelayBackoffType.Exponential, // 1 2 4 diye arttırır
-                Delay = TimeSpan.FromMilliseconds(pollySettings.RetryBaseDelayMs), // Başlangıç gecikmesi
+                BackoffType = DelayBackoffType.Exponential,
+                Delay = TimeSpan.FromMilliseconds(pollySettings.RetryBaseDelayMs),
                 OnRetry = args =>
                 {
-                   
-                    logger?.LogWarning(
-                        "gRPC Retry #{Attempt}. Bekleme: {Delay}ms. Sebep: {Outcome}",
-                        args.AttemptNumber, // Retry sayısı
-                        args.RetryDelay.TotalMilliseconds, // Gecikme süresi
-                        args.Outcome.Result?.StatusCode); // Hata kodu
-                    return ValueTask.CompletedTask; // ValueTask.CompletedTask, çünkü OnRetry async bir method değil
+                    var rpcEx = args.Outcome.Exception as RpcException;
+                    logger?.LogWarning("gRPC Retry #{Attempt}. Bekleme: {Delay}ms. Sebep: {StatusCode}",
+                        args.AttemptNumber,
+                        args.RetryDelay.TotalMilliseconds,
+                        rpcEx?.StatusCode);
+                    return ValueTask.CompletedTask;
                 }
-
             });
-
-            var metrics = handlerContext.ServiceProvider.GetService<OrderMetrics>();
-            resilienceBuilder.AddCircuitBreaker(new CircuitBreakerStrategyOptions<HttpResponseMessage>
+            resilienceBuilder.AddCircuitBreaker(new CircuitBreakerStrategyOptions
             {
-
-
-                FailureRatio = 0.5, // %50 başarısızlık durumunda devre kesici açılır  10 istekten 5'i başarısız olursa devre kesici açılır
-                MinimumThroughput = pollySettings.CircuitBreakerFailureThreshold, //circuit breaker'ın açılabilmesi için minimum istek sayısı
-                SamplingDuration = TimeSpan.FromSeconds(30), // Örnekleme süresi (30 saniye boyunca gelen istekler değerlendirilir)
-                BreakDuration = TimeSpan.FromSeconds(pollySettings.CircuitBreakerDurationSeconds), // Devre kesici açıldığında ne kadar süreyle istekleri engelleyeceği
+                ShouldHandle = args => ValueTask.FromResult(args.Outcome.Exception is RpcException),
+                FailureRatio = 0.5,
+                MinimumThroughput = pollySettings.CircuitBreakerFailureThreshold,
+                SamplingDuration = TimeSpan.FromSeconds(30),
+                BreakDuration = TimeSpan.FromSeconds(pollySettings.CircuitBreakerDurationSeconds),
                 OnOpened = args =>
                 {
-                   
-                    logger?.LogError(
-                        "CIRCUIT BREAKER AÇILDI! InventoryService'e istek gönderimi {Duration}s durduruldu.",
-                        pollySettings.CircuitBreakerDurationSeconds);
-
-                   
+                    logger?.LogError("CIRCUIT BREAKER AÇILDI! InventoryService'e istek gönderimi {Duration}s durduruldu.", pollySettings.CircuitBreakerDurationSeconds);
                     metrics?.CircuitBreakerStateChanged("Open");
-
                     return ValueTask.CompletedTask;
                 },
                 OnClosed = args =>
                 {
-                    
                     logger?.LogInformation("Circuit Breaker kapandı. InventoryService iletişimi normale döndü.");
-
-
                     metrics?.CircuitBreakerStateChanged("Closed");
                     return ValueTask.CompletedTask;
                 },
                 OnHalfOpened = args =>
                 {
-                    
                     logger?.LogInformation("Circuit Breaker yarı açık. Deneme isteği gönderiliyor...");
-                 
                     metrics?.CircuitBreakerStateChanged("HalfOpen");
                     return ValueTask.CompletedTask;
                 }
             });
-       
-    });
+        });
         builder.Services.AddScoped<IInventoryGrpcClient, InventoryGrpcClient>();
         return builder;
     }   

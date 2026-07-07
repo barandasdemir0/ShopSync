@@ -10,7 +10,8 @@ public static class HealthCheckExtensions
     {
         builder.Services.AddHealthChecks()
             .AddCheck<MongoDbHealthCheck>("mongodb", tags: new[] { "database", "ready" })
-            .AddCheck<RedisHealthCheck>("redis", tags: new[] { "cache", "ready" });
+            .AddCheck<RedisHealthCheck>("redis", tags: new[] { "cache", "ready" })
+          .AddCheck<MongoDbSlowQueryHealthCheck>("mongodb_slow_queries", tags: new[] { "database" });
         return builder;
     }
     public static WebApplication UseHealthCheckEndpoints(this WebApplication app)

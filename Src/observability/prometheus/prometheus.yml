@@ -28,7 +28,7 @@ scrape_configs:
     metrics_path: "/metrics"
     scrape_interval: 10s
     static_configs:
-      - targets: ["shopsync.inventoryservice:5144"]
+      - targets: ["host.docker.internal:5144"]
         labels:
           service: "inventory"
           environment: "development"
@@ -38,7 +38,7 @@ scrape_configs:
     metrics_path: "/metrics"
     scrape_interval: 10s
     static_configs:
-      - targets: ["shopsync.orderservice:5160"]
+      - targets: ["host.docker.internal:5160"]
         labels:
           service: "order"
           environment: "development"
