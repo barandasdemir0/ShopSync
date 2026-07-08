@@ -134,4 +134,30 @@ public class InventoryController : ControllerBase
         }
         return Ok(response);
     }
+
+    [HttpGet("forecast/{sku}")]
+    public async Task<IActionResult> GetForecast(string sku, [FromQuery] int days = 7, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(sku) || days <= 0)
+        {
+            return BadRequest(new 
+            { 
+                success = false, 
+                message = "Geçerli bir SKU ve gün sayısı girmelisiniz." 
+            });
+        }
+
+        var response = await _inventoryClient.GetInventoryForecastAsync(sku, days, ct);
+        if (!response.Success)
+        {
+            return BadRequest(new { success = false, message = response.Message });
+        }
+        return Ok(new
+        {
+            success = true,
+            sku = response.Sku,
+            predictedRequiredQuantity = response.PredictedRequiredQuantity,
+            message = response.Message
+        });
+    }
 }

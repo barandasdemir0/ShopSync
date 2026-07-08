@@ -39,7 +39,9 @@ public sealed class InventoryGrpcClient : IInventoryGrpcClient
             };
             request.Items.AddRange(items);
             var response = await _pipeline.ExecuteAsync(async token =>
-                await _client.ConfirmReservationAsync(request, cancellationToken: token), ct);
+                await _client.ConfirmReservationAsync(request, cancellationToken: token), 
+                ct);
+
             if (!response.Success)
             {
                 _logger.LogWarning(
@@ -77,6 +79,7 @@ public sealed class InventoryGrpcClient : IInventoryGrpcClient
                 WarehouseCode = warehouseCode,
                 LowStockThreshold = lowStockThreshold 
             };
+
             var response = await _client.CreateInventoryItemAsync(request, cancellationToken: ct);
             return response;
         }
@@ -180,6 +183,21 @@ public sealed class InventoryGrpcClient : IInventoryGrpcClient
             sw.Stop(); 
             _metrics.RecordGrpcCallDuration(sw.ElapsedMilliseconds);  //elapsed milliseconds: geçen süreyi milisaniye cinsinden kaydet
         }
+    }
+
+    public async Task<GetInventoryForecastResponse> GetInventoryForecastAsync(string sku, int daysToPredict, CancellationToken ct = default)
+    {
+        var request = new GetInventoryForecastRequest
+        {
+            Sku = sku,
+            DaysToPredict = daysToPredict
+        };
+
+        // Polly pipeline üzerinden gRPC çağrısını yap
+        return await _pipeline.ExecuteAsync(async cancellationToken =>
+        {
+            return await _client.GetInventoryForecastAsync(request, cancellationToken: cancellationToken);
+        }, ct);
     }
 
     public async Task<GetStockResponse> GetStockAsync(string sku, CancellationToken ct = default)

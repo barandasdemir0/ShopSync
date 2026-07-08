@@ -52,5 +52,8 @@ public interface IInventoryGrpcClient
     // Mevcut ürünü depodan sil
     Task<StockOperationResponse> DeleteInventoryItemAsync(string sku, string warehouseCode, CancellationToken ct = default);
 
+    // Envanter tahmini al
+    Task<GetInventoryForecastResponse> GetInventoryForecastAsync(string sku, int daysToPredict, CancellationToken ct = default);
+
 
 }

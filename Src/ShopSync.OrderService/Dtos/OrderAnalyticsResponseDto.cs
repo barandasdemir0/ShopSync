@@ -23,4 +23,7 @@ public sealed class OrderAnalyticsResponseDto
     // Analiz aralığı
     public DateTime AnalyzedFrom { get; set; }
     public DateTime AnalyzedTo { get; set; }
+
+    public string PeakReservationTime { get; set; } = string.Empty;
+
 }

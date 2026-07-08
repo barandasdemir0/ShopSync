@@ -425,8 +425,24 @@ public sealed class OrderAppService : IOrderAppService
             return Math.Round(averageSeconds, 2);
         }
 
-      
-        // 4. Sonuçları tek seferde dön! Kod yarı yarıya kısaldı.
+
+        // En Yogun Saati Hesaplama (Peak Reservation Time)
+        string peakTime = "Belirlenemedi";
+        if (totalOrders > 0)
+        {
+            var peakHourGroup = orders
+                .GroupBy(o => o.CreatedAt.ToLocalTime().Hour)
+                .OrderByDescending(g => g.Count())
+                .FirstOrDefault();
+            if (peakHourGroup != null)
+            {
+                //.key gruplama yaptığımızda her grubun anahtarıdır. Burada saat bilgisi var.
+                int hour = peakHourGroup.Key;
+                peakTime = $"{hour:00}:00 - {(hour + 1):00}:00";
+            }
+        }
+
+        // 4. Sonuclari tek seferde dn! Kod yari yariya kisaldi.
         return new OrderAnalyticsResponseDto
         {
             TotalOrders = totalOrders,
@@ -434,14 +450,15 @@ public sealed class OrderAppService : IOrderAppService
             ConfirmedCount = confirmedCount,
             CancelledCount = cancelledCount,
             ExpiredCount = expiredCount,
-            ConfirmationRate = Math.Round((double)confirmedCount / totalOrders * 100, 2), // Yüzdeyi hesapla ve virgülden sonra 2 hane yuvarla 
+            ConfirmationRate = Math.Round((double)confirmedCount / totalOrders * 100, 2),
             CancellationRate = Math.Round((double)cancelledCount / totalOrders * 100, 2),
             ExpirationRate = Math.Round((double)expiredCount / totalOrders * 100, 2),
             AverageTimeToConfirmSeconds = CalculateAvgTime(OrderStatus.Confirmed.Code),
             AverageTimeToCancelSeconds = CalculateAvgTime(OrderStatus.Cancelled.Code),
             AverageTimeToExpireSeconds = CalculateAvgTime(OrderStatus.Expired.Code),
             AnalyzedFrom = from ?? DateTime.MinValue,
-            AnalyzedTo = to ?? DateTime.UtcNow
+            AnalyzedTo = to ?? DateTime.UtcNow,
+            PeakReservationTime = peakTime 
         };
 
     }
