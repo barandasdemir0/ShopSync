@@ -53,7 +53,13 @@ public interface IInventoryRepository
     // Yeni bir snapshot kaydeder.
     Task InsertSnapshotAsync(InventorySnapshot snapshot, CancellationToken ct = default);
     // Belirli bir snapshot'ı getirir.
+
+    // snapshotId ile snapshot'ı getirir, eğer bulunamazsa null döner.
     Task<InventorySnapshot?> GetSnapshotByIdAsync(string snapshotId, CancellationToken ct = default);
+
+    // Belirli bir SKU için, belirli bir tarihten itibaren yapılan tüm transaction loglarını getirir.
+    Task<List<InventoryTransactionLog>> GetTransactionLogsForSkuAsync(string sku, DateTime since, CancellationToken ct = default);
+
 
 }
 

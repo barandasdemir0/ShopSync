@@ -43,6 +43,10 @@ service InventoryGrpc
 	// Belirli bir ürünü depodan kalıcı olarak siler
 	rpc DeleteInventoryItem (DeleteInventoryItemRequest) returns (StockOperationResponse);
 
+	// Belirli bir ürünün gelecekteki stok tahminini getirir
+	rpc GetInventoryForecast (GetInventoryForecastRequest) returns (GetInventoryForecastResponse);
+
+
 }
 
 
@@ -188,4 +192,17 @@ message CreateInventoryItemRequest {
 message DeleteInventoryItemRequest {
 	string sku = 1;                  // Ürün kodu
 	string warehouse_code = 2;       // Depo kodu
+}
+
+// --- FORECASTING ---
+message GetInventoryForecastRequest {
+  string sku = 1;
+  int32 daysToPredict = 2; // Tahmin edilecek gün sayısı
+}
+
+message GetInventoryForecastResponse {
+  string sku = 1;
+  int32 predictedRequiredQuantity = 2; // Tahmin edilen gerekli miktar
+  string message = 3;
+  bool success = 4;
 }

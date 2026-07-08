@@ -184,7 +184,7 @@ public sealed class InventoryRepository : IInventoryRepository
            .ToListAsync(ct);
     }
 
-    // Belirli sipariş ID'leri için CONFIRM, RELEASE veya EXPIRATION işlemi olan OrderId'leri getirir.
+    // Belirli sipariş ID'leri için CONFIRM, RELEASE veya EXPIRATION işlemi olan OrderId'leri getirir. hashset, aynı sipariş ID'sinin birden fazla kez eklenmesini önler ve hızlı arama yapmayı sağlar. Bu sayede, süresi dolmuş rezervasyon transaction loglarından tamamlanmış olanları hızlıca filtreleyebiliriz.
     private async Task<HashSet<string>> FetchCompletedOrderIdsAsync(List<string> orderIds, CancellationToken ct)
     {
         var completedTypes = new[]
@@ -294,5 +294,17 @@ public sealed class InventoryRepository : IInventoryRepository
         return await _context.Snapshots
         .Find(x => x.Id == snapshotId)
         .FirstOrDefaultAsync(ct);
+    }
+
+    // SKU ve belirli bir tarihten itibaren yapılan başarılı işlemleri getirir. Bu, belirli bir SKU için yapılan satışları veya diğer işlemleri analiz etmek için kullanılabilir.
+    public async Task<List<InventoryTransactionLog>> GetTransactionLogsForSkuAsync(string sku, DateTime since, CancellationToken ct = default)
+    {
+        var filter = Builders<InventoryTransactionLog>.Filter.And( // SKU ve belirli bir tarihten itibaren yapılan başarılı işlemleri filtrele
+           Builders<InventoryTransactionLog>.Filter.Eq(x => x.Sku, sku), // SKU'ya göre filtrele
+           Builders<InventoryTransactionLog>.Filter.Gte(x => x.Timestamp, since), // Zaman damgası belirli bir tarihten büyük veya eşit olanları filtrele
+           // Sadece başarılı satislari baz almak daha dogru tahmine ulastirir.
+           Builders<InventoryTransactionLog>.Filter.Eq(x => x.TransactionType, InventoryTransactionType.Confirm.Code)
+       );
+        return await _context.TransactionLogs.Find(filter).ToListAsync(ct);
     }
 }
