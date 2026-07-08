@@ -28,6 +28,31 @@ Bu mimari başyapıt, **Rasyonet** firmasında **Software Developer Intern (Yaz�
 
 ---
 
+## 📦 Teknoloji Yığını (Tech Stack)
+
+<div align="center">
+
+| Kategori | Teknoloji |
+| :--- | :--- |
+| **Platform** | .NET 10, C# 14 |
+| **Web Framework** | ASP.NET Core 10 |
+| **İletişim / API** | REST & gRPC (HTTP/2) |
+| **Veritabanı (Primary)** | MongoDB (Replica Set) |
+| **Önbellek & Kilit (Lock)** | Redis |
+| **Nesne Eşleme (Mapper)** | Mapster |
+| **Loglama** | Serilog |
+| **Dayanıklılık (Resilience)**| Polly (Retry, Circuit Breaker, Jitter) |
+| **Tracing** | OpenTelemetry + Jaeger |
+| **Metrikler** | Prometheus + Grafana |
+| **Merkezi Log** | Grafana Loki |
+| **Yük Testi (Load Test)** | K6 |
+| **Dokümantasyon** | Scalar (OpenAPI) |
+| **Konteyner** | Docker, Docker Compose |
+
+</div>
+
+---
+
 ## 📑 Dev Kılavuz: İçindekiler
 1. [Projenin Varoluş Felsefesi ve Dağıtık Sistemler](#1-projenin-varoluş-felsefesi-ve-dağıtık-sistemler)
 2. [Domain-Driven Design (DDD) Derinlemesine Analizi](#2-domain-driven-design-ddd-derinlemesine-analizi)
