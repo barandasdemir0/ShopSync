@@ -85,11 +85,11 @@ public sealed class InventoryRepository : IInventoryRepository
     }
 
     // Belirtilen expirationThreshold tarihinden önce oluşturulmuş, süresi dolmuş rezervasyon transaction loglarını getirir.
-    public async Task<List<InventoryTransactionLog>> GetExpiredReservationLogsAsync(DateTime expirationThreshold, CancellationToken ct = default)
+    public async Task<List<InventoryTransactionLog>> GetExpiredReservationLogsAsync(DateTime expirationThreshold, DateTime lastProcessedThreshold, CancellationToken ct = default)
     {
 
         // MongoDB'de süresi dolmuş rezervasyon transaction loglarını getir.
-        var reserveLogs = await FetchExpiredReserveLogsAsync(expirationThreshold, ct);
+        var reserveLogs = await FetchExpiredReserveLogsAsync(expirationThreshold, lastProcessedThreshold, ct);
 
         // Eğer süresi dolmuş rezervasyon transaction logları yoksa, boş bir liste döndür.
         if (reserveLogs.Count == 0)
@@ -175,11 +175,12 @@ public sealed class InventoryRepository : IInventoryRepository
     }
 
     // Bu metod, belirli bir tarihten önce oluşturulmuş ve süresi dolmuş rezervasyon transaction loglarını getirir.
-    private async Task<List<InventoryTransactionLog>> FetchExpiredReserveLogsAsync(DateTime expirationThreshold, CancellationToken ct)
+    private async Task<List<InventoryTransactionLog>> FetchExpiredReserveLogsAsync(DateTime expirationThreshold, DateTime lastProcessedThreshold, CancellationToken ct)
     {
         return await _context.TransactionLogs
            .Find(x =>
                x.TransactionType == InventoryTransactionType.Reserve.Code &&
+               x.Timestamp >= lastProcessedThreshold && // Checkpoint optimizasyonu
                x.Timestamp < expirationThreshold)
            .ToListAsync(ct);
     }

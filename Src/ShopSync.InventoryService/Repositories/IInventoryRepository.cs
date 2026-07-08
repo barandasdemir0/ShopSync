@@ -26,7 +26,8 @@ public interface IInventoryRepository
     Task<List<InventoryItem>> GetLowStockItemsAsync(CancellationToken ct = default);
 
     // Belirtilen expirationThreshold tarihinden önce oluşturulmuş, süresi dolmuş rezervasyon transaction loglarını getirir.
-    Task<List<InventoryTransactionLog>> GetExpiredReservationLogsAsync(DateTime expirationThreshold,CancellationToken ct = default);
+    Task<List<InventoryTransactionLog>> GetExpiredReservationLogsAsync(DateTime expirationThreshold, DateTime lastProcessedThreshold, CancellationToken ct = default);
+
 
     //tüm stok bilgilerini getirir
     Task<List<InventoryItem>> GetAllItemsAsync(CancellationToken ct = default);
