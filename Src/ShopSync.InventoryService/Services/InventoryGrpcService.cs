@@ -7,6 +7,7 @@ using StackExchange.Redis;
 
 namespace ShopSync.InventoryService.Services;
 
+//burası gRPC servisinin ana sınıfıdır ve tüm gRPC metodlarını içerir. Her bir gRPC metodu, ilgili iş mantığını çağırır ve sonuçları döndürür. Bu sınıf, envanter yönetimi ile ilgili tüm işlemleri kapsar.
 public sealed partial class InventoryGrpcService: InventoryGrpc.InventoryGrpcBase
 {
     private readonly IInventoryRepository _repository;
