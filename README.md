@@ -22,7 +22,7 @@
 ---
 **ShopSync**, sıradan bir CRUD uygulamasının çok ötesinde, modern ve bulut-yerel (cloud-native) sistemlerin karşılaştığı **Dağıtık Sistem Yanılgıları (Fallacies of Distributed Computing)** problemlerini çözmek için inşa edilmiştir. Bu proje, **Domain-Driven Design (DDD)** prensipleri etrafında şekillenmiş, dış dünya ile bağını **gRPC** ve **REST** üzerinden kuran, **K6** ile yapılan acımasız stres testlerine (Stress Testing) dayanacak şekilde Polly ile zırhlandırılmış devasa bir mühendislik çalışmasıdır.
 
-Bu mimari başyapıt, **Rasyonet** firmasında **Software Developer Intern (Yazılım Geliştirici Stajyer)** olarak görev alırken tasarlayıp geliştirdiğim 2. büyük projedir.
+Bu mimari başyapıt, **Rasyonet** firmasında **Software Developer Intern (Yazılım Geliştirici Stajyer)** olarak görev alırken tasarlayıp geliştirdiğim 2. büyük projedir. (1. Staj Projemi incelemek için: [MoneyTransferCenter](https://github.com/barandasdemir0/MoneyTransferCenter))
 
 </div>
 
@@ -58,7 +58,7 @@ Geliştiricilerin genellikle unuttuğu ve ShopSync'in özellikle ele aldığı d
 5. **Topoloji değişmez:** Hayır, değişir. Kubernetes veya Docker Swarm ortamında podlar sürekli kapanıp açılabilir, IP'ler değişir.
 
 ### 1.2 İletişim Stratejisi: REST ve gRPC Birlikteliği
-- İstemciler (Swagger, Postman, UI vb.) doğrudan Order API'ye REST (HTTP/1.1) ile konuşur.
+- İstemciler (Scalar, Postman, UI vb.) doğrudan Order API'ye REST (HTTP/1.1) ile konuşur.
 - Order Service içeri döndüğünde, veriyi JSON'dan Protobuf (Binary) formatına çevirir ve Inventory Service ile HTTP/2 Multiplexing destekli **gRPC** üzerinden konuşur. Bu mimari "Backend for Frontend" (BFF) konseptine benzer bir işlevi Backend seviyesinde uygular.
 
 ---
@@ -103,6 +103,7 @@ Sipariş yönetimi, dışarıdan HTTP isteklerini alıp bunları Domain iş kura
 
 ### 3.1 Katmanların Soyutlanması (Clean Architecture Esintileri)
 - **Controllers Katmanı:** İstekleri alır ve manuel inline validasyon kurallarıyla (örn: `if (request.Items.Count == 0) return BadRequest()`) gelen JSON verisini denetler. Harici doğrulama kütüphanelerine (örn. FluentValidation) bel bağlamak yerine, hafif, yüksek performanslı ve doğrudan controller seviyesinde kararlar alınır.
+- **DTOs ve Mapster (Yüksek Performanslı Eşleme):** Domain modelleri (Aggregate Roots) dışarıya doğrudan açılmaz (Encapsulation). Entity-DTO dönüşümleri için hantal AutoMapper yerine, CPU döngülerinden tasarruf sağlayan yüksek performanslı **Mapster** kütüphanesi kullanılmıştır.
 - **Services Katmanı:** Redis Idempotency kilidini kontrol eden Middleware'in ardından, Domain Aggregate'i (`Order.cs`) yaratır ve gRPC istemcisini tetikler.
 - **Repositories Katmanı:** Data Access Logic (Veri Erişim Mantığı) burada gizlidir. Servis katmanı MongoDB kodlarını görmez. `IOrderRepository` arayüzü sayesinde bağımlılıklar tersine çevrilmiştir (Dependency Inversion).
 
@@ -128,7 +129,12 @@ public interface IOrderRepository
 }
 ```
 
-### 3.3 Kapsamlı Sistem Mimarisi Şeması (Mermaid)
+### 3.3 Sipariş Analitiği, Peak Tespitleri ve Zaman Geçişleri
+Sistem, sadece siparişleri kaydetmenin ötesinde e-ticaret siteleri için hayati olan istatistiksel verileri sunmak üzere `GetAnalytics` endpoint'ini barındırır:
+- **Zaman Geçişleri (Transition Times):** Bir siparişin *Pending* (Beklemede) durumundan *Confirmed* (Onaylandı) durumuna geçmesinin ortalama ne kadar sürdüğünü (`GetAverageTransitionTimeAsync`) milisaniye cinsinden hesaplar.
+- **Peak (Zirve) Zaman Tespiti:** Hangi tarih aralıklarında (saat, gün) siparişlerin tavan yaptığını (peak), Black Friday veya anlık kampanyalarda sistemin hangi hızda tüketim yaptığını ölçerek operasyonel öngörü sağlar.
+
+### 3.4 Kapsamlı Sistem Mimarisi Şeması (Mermaid)
 
 Tüm bu katmanların (Order, Inventory, Redis, Mongo, Otel, K6) birbirleriyle nasıl etkileşime girdiğini gösteren yapı aşağıdadır:
 
@@ -234,7 +240,7 @@ Envanter üzerinde yapılan yanlış veya test işlemlerine karşı **Snapshot**
 - `RestoreSnapshotRequest`: Bir sorun yaşanması halinde saniyeler içinde tüm envanter sayımını geriye sarmaya olanak tanır.
 
 ### 4.3 Yapay Zeka Hazırlığı ve Stok Tahminleme (Forecasting)
-`GetInventoryForecast` endpoint'i, istenilen gün sayısına (örn: 7 günlük) göre ürünün tahmini tükenme veya ihtiyaç duyulan ek sipariş miktarını öngörmek üzere tasarlanmıştır.
+Geçmiş verilere dayanarak geleceği öngörmek, modern e-ticaretin belkemiğidir. `GetInventoryForecast` endpoint'i, istenilen gün sayısına (örn: 7 günlük) göre ürünün tahmini tükenme süresini (Out of Stock) veya ihtiyaç duyulan ek sipariş miktarını (Predicted Required Quantity) öngörmek üzere tasarlanmıştır. Bu yapı ileride eklenecek Machine Learning (Makine Öğrenimi) algoritmaları için bir altyapı oluşturur.
 
 - **Atomic Operations ve Concurrency:** Eşzamanlı K6 testleri sırasında (saniyede 1000 istek) aynı stok bilgisini düşmeye çalışan istekleri engellemek için, MongoDB'nin `$inc` (Increment/Decrement) operatörlerini kullanarak veritabanı seviyesinde Optimistic Concurrency Control (İyimser Eşzamanlılık) sağlar. İki kişi tek kalan ürünü almaya çalışırsa, biri hata alır, diğeri alır.
 
@@ -418,6 +424,11 @@ sequenceDiagram
     deactivate Job
 ```
 
+### 8.4 Kesintisiz Arka Plan İşçileri (Background Jobs) ve Checkpoint Mimarisi
+E-ticaret sistemlerinin gerçek kalbi sadece Controller'larda değil, arka planda hiç durmadan saat gibi tıkır tıkır çalışan işçilerde (Background Workers) atar. Inventory servisi bu anlamda kusursuz bir otonom altyapıya sahiptir:
+- **Low Stock Alert Job (Kritik Stok Uyarısı):** Belli aralıklarla tüm depolardaki devasa stok havuzunu tarar. Ürünlerin önceden belirlenen kritik eşiğinin (`LowStockThreshold`) altına düştüğünü tespit ederse sistem yöneticilerine ve tedarik ekibine anlık proaktif uyarı (Log/Alert) üretir. Bu eşsiz sistem sayesinde stoklar tükenmeden ("Yok Satma" problemi yaşanmadan) ürünler rafa eklenir ve olası ciro kayıplarının kesin olarak önüne geçilir.
+- **Kesintisiz Çalışma (Checkpointing) ve Öz-İyileşme (Self-Healing):** `ReservationExpirationJob` gibi milyonlarca kaydı tarama potansiyeli olan ağır veritabanı işçileri, sunucu çöktüğünde veya Docker konteyneri baştan başlatıldığında sıfırdan taramaya başlamaz! Bunun yerine çok gelişmiş bir **Checkpoint** (Kontrol Noktası) mekanizması kullanır. Her işlemin sonunda en son başarılı taradığı zaman damgasını (Timestamp) MongoDB'ye yedekler. Sistem herhangi bir sebeple elektrik kesintisi bile yaşasa, ayağa kalktığı an tam da kaldığı milisaniyeden işine devam eder. Veritabanını gereksiz I/O kilitlenmelerinden koruyan bu harika "Kaldığın Yerden Devam Et" mantığı, projeyi devlerin kullandığı standartlara ulaştırmıştır.
+
 ---
 
 ## 9. OpenTelemetry ile Tam Kapsamlı Gözlemlenebilirlik
@@ -525,7 +536,7 @@ Projenin `docker-compose.yml` dosyası, tüm bir üretim ortamı ağ topolojisin
 Tüm servisler `shopsync-net` adında izole bir köprü ağı (bridge network) içinde yaşar. 
 - `shopsync.inventoryservice` konteyneri dış dünyaya port (örn: 5001) açmaz. Sadece aynı ağdaki `shopsync.orderservice` ona ulaşabilir. Bu "Zero Trust" (Sıfır Güven) mimarisine yakın bir güvenlik duvarıdır.
 
-### Healthcheck (Sağlık Kontrolleri)
+### 12.1 Docker Healthcheck (Altyapı Sağlığı)
 Docker Compose dosyasında yer alan `depends_on` ve `healthcheck` mekanizmaları sayesinde, MongoDB Replica Set (`rs0`) tamamen "Healthy" (Sağlıklı) durumuna gelmeden .NET servisleri ayağa kalkmaz.
 ```yaml
 # MongoDB Healthcheck Konfigürasyonu
@@ -536,6 +547,13 @@ healthcheck:
   retries: 5
   start_period: 10s
 ```
+
+### 12.2 .NET Yerleşik (Built-in) Sağlık Kontrolleri (/healthz)
+Uygulama ayağa kalktıktan sonra iç sistemlerin (veritabanı, önbellek) durumunu canlı olarak izlemek için `Microsoft.AspNetCore.Diagnostics.HealthChecks` kütüphanesi entegre edilmiştir.
+- `/healthz` endpoint'i düzenli aralıklarla çağrıldığında standart JSON formatında rapor sunar.
+- **`MongoDbHealthCheck`**: Veritabanı bağlantısının ve Replica Set'in sağlıklı yanıt verip vermediğini denetler.
+- **`MongoDbSlowQueryHealthCheck`**: Veritabanındaki yavaş sorguları (Slow queries) analiz ederek olası bir Index eksikliğini veya darboğazı anında raporlar.
+- **`RedisHealthCheck`**: Idempotency kilitlerinin tutulduğu Redis kümesinin "Cache Ready" durumunu saniyeler bazında ölçer.
 
 ---
 
@@ -565,7 +583,7 @@ Projeyi K6 ile stres testine sokmak veya yerelde incelemek için sadece **Docker
 ### 13.2 Sistem Port Haritası
 | Araç / Servis | Yerel URL / Port | Varsayılan Kimlik Bilgileri |
 | :--- | :--- | :--- |
-| **Order Web API (Swagger)** | `http://localhost:5160/swagger` | Tüm API testleri ve dış giriş kapısı. |
+| **Order Web API (Scalar)** | `http://localhost:5160/scalar` | Klasik Swagger yerine yeni nesil, hızlı ve interaktif Scalar API arayüzü. |
 | **Grafana Dashboard** | `http://localhost:3000` | Kullanıcı: `admin`, Şifre: `shopsync123` |
 | **Jaeger UI (Tracing)** | `http://localhost:16686` | Dağıtık İzleme (Trace) şelale analiz ekranı. |
 | **Prometheus (Metrics)**| `http://localhost:9090` | Ham zaman-serisi metrikleri. |
@@ -575,7 +593,7 @@ Projeyi K6 ile stres testine sokmak veya yerelde incelemek için sadece **Docker
 ### 13.3 Runbook: Sık Karşılaşılan Olaylar (Incidents)
 - **MongoDB RS Başlatma Gecikmesi (Time-out):** İlk çalışma anında MongoDB `rs.initiate()` işlemi gecikebilir. `OrderService` veritabanına bağlanamazsa çöker (CrashLoop). Çözüm: Terminalden `docker compose restart shopsync.orderservice` ile servisi manuel tekrar başlatın.
 - **K6 Yük Testinde Bağlantı Sıfırlama (Connection Reset by Peer):** Eğer 2000 VU'ya ulaşıp çok uzun süre baskı yaparsanız, işletim sisteminizin TCP socket limitlerine (Ephermal ports exhaustion) takılabilirsiniz. İşletim sistemi seviyesinde TCP port tuning gerekebilir. Bu bir uygulama hatası değil, yerel işletim sistemi donanım darboğazıdır.
-- **Grafana'da Metrik Görmeme Sorunu:** Order API (`http://localhost:5160/swagger`) üzerine K6 veya manuel olarak birkaç istek atmadıkça, Prometheus verileri (Counter) artmaz. İstek attıktan sonra Prometheus'un metrikleri çekmesi (scrape interval) için ortalama 10-15 saniye bekleyiniz.
+- **Grafana'da Metrik Görmeme Sorunu:** Order API (`http://localhost:5160/scalar` vb.) üzerine K6 veya manuel olarak birkaç istek atmadıkça, Prometheus verileri (Counter) artmaz. İstek attıktan sonra Prometheus'un metrikleri çekmesi (scrape interval) için ortalama 10-15 saniye bekleyiniz.
 
 ---
 
