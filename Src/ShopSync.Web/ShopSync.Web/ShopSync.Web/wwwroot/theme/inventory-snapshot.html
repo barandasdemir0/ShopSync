@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snapshot — ShopSync</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">S</div>
+      <span>ShopSync</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">Genel</div>
+      <a href="index.html" class="sidebar-link"><span class="icon">&#9632;</span> Dashboard</a>
+      <div class="sidebar-section">Siparisler</div>
+      <a href="orders.html" class="sidebar-link"><span class="icon">&#9776;</span> Siparis Listesi</a>
+      <a href="order-create.html" class="sidebar-link"><span class="icon">&#43;</span> Yeni Siparis</a>
+      <a href="order-batch-cancel.html" class="sidebar-link"><span class="icon">&#10005;</span> Toplu Iptal</a>
+      <div class="sidebar-section">Envanter</div>
+      <a href="inventory.html" class="sidebar-link"><span class="icon">&#9881;</span> Envanter Listesi</a>
+      <a href="inventory-operations.html" class="sidebar-link"><span class="icon">&#8644;</span> Stok Islemleri</a>
+      <a href="inventory-snapshot.html" class="sidebar-link active"><span class="icon">&#128190;</span> Snapshot</a>
+      <a href="inventory-forecast.html" class="sidebar-link"><span class="icon">&#128200;</span> Stok Tahmini</a>
+      <div class="sidebar-section">Raporlama</div>
+      <a href="analytics.html" class="sidebar-link"><span class="icon">&#128202;</span> Analitik</a>
+    </nav>
+  </aside>
+  <div class="sidebar-overlay"></div>
+
+  <div class="main">
+    <header class="header">
+      <button class="hamburger" aria-label="Menu">&#9776;</button>
+      <h1 class="header-title">Snapshot Yonetimi</h1>
+      <div class="header-actions">
+        <a href="inventory.html" class="btn btn-secondary btn-sm">&larr; Envantere Don</a>
+      </div>
+    </header>
+
+    <main class="content fade-in">
+      <div class="grid-2">
+        <!-- Snapshot Al -->
+        <div class="card">
+          <div class="card-header">
+            Snapshot Al
+            <span class="text-sm text-muted">POST /api/Inventory/snapshot</span>
+          </div>
+          <div class="card-body">
+            <form method="post" action="/Inventory/Snapshot">
+              <input type="hidden" name="action" value="create">
+              <div class="form-group">
+                <label class="form-label" for="snap-desc">Aciklama</label>
+                <input type="text" id="snap-desc" name="description" class="form-input"
+                       placeholder="orn. Satis oncesi envanter durumu" required>
+                <div class="form-hint">Snapshot icin anlamli bir aciklama girin.</div>
+              </div>
+              <div class="alert alert-info">
+                <strong>Bilgi:</strong> Snapshot, tum envanter kalemlerinin o anki durumunu kaydeder.
+                Sonra bu duruma geri donebilirsiniz.
+              </div>
+              <button type="submit" class="btn btn-primary"
+                      onclick="return confirm('Snapshot almak istediginize emin misiniz?')">Snapshot Al</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Snapshot Geri Yukle -->
+        <div class="card">
+          <div class="card-header">
+            Snapshot Geri Yukle
+            <span class="text-sm text-muted">POST /api/Inventory/snapshot/{id}/restore</span>
+          </div>
+          <div class="card-body">
+            <form method="post" action="/Inventory/Snapshot">
+              <input type="hidden" name="action" value="restore">
+              <div class="form-group">
+                <label class="form-label" for="restore-id">Snapshot ID</label>
+                <input type="text" id="restore-id" name="snapshotId" class="form-input mono"
+                       placeholder="Geri yuklenecek snapshot ID'si" required>
+              </div>
+              <div class="alert alert-warning">
+                <strong>Dikkat:</strong> Bu islem tum envanteri snapshot anindaki durumuna geri dondurur.
+                Mevcut stok degisiklikleri kaybolacaktir.
+              </div>
+              <button type="submit" class="btn btn-warning"
+                      onclick="return confirm('Snapshot geri yukleniyor! Mevcut stok durumu degisecek. Emin misiniz?')">
+                Geri Yukle
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Son Snapshot'lar -->
+      <div class="card mt-lg">
+        <div class="card-header">Son Alinan Snapshot'lar</div>
+        <div class="card-body" style="padding:0;">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Snapshot ID</th>
+                  <th>Aciklama</th>
+                  <th>Kalem Sayisi</th>
+                  <th>Tarih</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="table-id" data-label="Snapshot ID">—</td>
+                  <td data-label="Aciklama">—</td>
+                  <td data-label="Kalem Sayisi" class="text-mono">—</td>
+                  <td data-label="Tarih" class="text-mono text-sm">—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      ShopSync &copy; 2026 &mdash; Microservices E-Commerce Backend
+    </footer>
+  </div>
+</div>
+<script src="site.js"></script>
+</body>
+</html>

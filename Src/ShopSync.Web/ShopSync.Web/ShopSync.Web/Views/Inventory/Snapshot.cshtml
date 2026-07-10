@@ -1,0 +1,56 @@
+﻿@{
+    ViewData["Title"] = "Snapshot Yönetimi";
+}
+
+<div class="grid-2">
+    <!-- Snapshot Al -->
+    <div class="card">
+        <div class="card-header">
+            Snapshot Al
+            <span class="text-sm text-muted">POST /api/Inventory/snapshot</span>
+        </div>
+        <div class="card-body">
+            <form method="post" asp-action="Snapshot">
+                <input type="hidden" name="action" value="create" />
+                <div class="form-group">
+                    <label class="form-label" for="snap-desc">Açıklama</label>
+                    <input type="text" id="snap-desc" name="description" class="form-input"
+                           placeholder="orn. Satış öncesi envanter durumu" required>
+                    <div class="form-hint">Snapshot için anlamlı bir açıklama girin.</div>
+                </div>
+                <div class="alert alert-info">
+                    <strong>Bilgi:</strong> Snapshot, tüm envanter kalemlerinin o anki durumunu kaydeder. Sonra bu duruma geri dönebilirsiniz.
+                </div>
+                <button type="submit" class="btn btn-primary"
+                        onclick="return confirm('Snapshot almak istediğinize emin misiniz?')">
+                    Snapshot Al
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Snapshot Geri Yükle -->
+    <div class="card">
+        <div class="card-header">
+            Snapshot Geri Yükle
+            <span class="text-sm text-muted">POST /api/Inventory/snapshot/{id}/restore</span>
+        </div>
+        <div class="card-body">
+            <form method="post" asp-action="Snapshot">
+                <input type="hidden" name="action" value="restore" />
+                <div class="form-group">
+                    <label class="form-label" for="restore-id">Snapshot ID</label>
+                    <input type="text" id="restore-id" name="snapshotId" class="form-input mono"
+                           placeholder="Geri yüklenecek snapshot ID'si" required>
+                </div>
+                <div class="alert alert-warning">
+                    <strong>Dikkat:</strong> Bu işlem tüm envanteri snapshot anındaki durumuna geri döndürür. Mevcut stok değişiklikleri kaybolacaktır.
+                </div>
+                <button type="submit" class="btn btn-warning"
+                        onclick="return confirm('Snapshot geri yükleniyor! Mevcut stok durumu değişecek. Emin misiniz?')">
+                    Geri Yükle
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

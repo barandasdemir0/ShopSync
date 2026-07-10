@@ -1,0 +1,100 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"] — ShopSync</title>
+
+    <!-- Sizin temanıza ait özel CSS dosyası (Eğer wwwroot/theme içindeyse yolu böyle kalmalı) -->
+    <link rel="stylesheet" href="~/theme/site.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="layout">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">S</div>
+                <span>ShopSync</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="sidebar-section">Genel</div>
+                <a asp-controller="Home" asp-action="Index" class="sidebar-link">
+                    <span class="icon">&#9632;</span> Dashboard
+                </a>
+
+                <div class="sidebar-section">Siparişler</div>
+                <a asp-controller="Order" asp-action="Index" class="sidebar-link">
+                    <span class="icon">&#9776;</span> Sipariş Listesi
+                </a>
+                <a asp-controller="Order" asp-action="Create" class="sidebar-link">
+                    <span class="icon">&#43;</span> Yeni Sipariş
+                </a>
+                <a asp-controller="Order" asp-action="BatchCancel" class="sidebar-link">
+                    <span class="icon">&#10005;</span> Toplu İptal
+                </a>
+
+                <div class="sidebar-section">Envanter</div>
+                <a asp-controller="Inventory" asp-action="Index" class="sidebar-link">
+                    <span class="icon">&#9881;</span> Envanter Listesi
+                </a>
+                <a asp-controller="Inventory" asp-action="Operations" class="sidebar-link">
+                    <span class="icon">&#8644;</span> Stok İşlemleri
+                </a>
+                <a asp-controller="Inventory" asp-action="Snapshot" class="sidebar-link">
+                    <span class="icon">&#128190;</span> Snapshot
+                </a>
+                <a asp-controller="Inventory" asp-action="Forecast" class="sidebar-link">
+                    <span class="icon">&#128200;</span> Stok Tahmini
+                </a>
+
+                <div class="sidebar-section">Raporlama</div>
+                <a asp-controller="Analytics" asp-action="Index" class="sidebar-link">
+                    <span class="icon">&#128202;</span> Analitik
+                </a>
+            </nav>
+        </aside>
+
+        <div class="sidebar-overlay"></div>
+
+        <!-- Main -->
+        <div class="main">
+            <header class="header">
+                <button class="hamburger" aria-label="Menu">&#9776;</button>
+                <h1 class="header-title">@ViewData["Title"]</h1>
+                <div class="header-actions">
+                    <span class="text-sm text-muted">API: localhost:5160</span>
+                </div>
+            </header>
+
+            <!-- DEĞİŞEN SAYFA İÇERİKLERİ BURAYA GELECEK -->
+            <main class="content fade-in">
+
+                <!-- Uyarı Mesajları -->
+                @if (TempData["Success"] != null)
+                {
+                    <div class="alert alert-success" data-auto-dismiss>@TempData["Success"]</div>
+                }
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-danger" data-auto-dismiss>@TempData["Error"]</div>
+                }
+
+                <!-- MVC'nin diğer sayfaları (.cshtml) tam bu noktaya yüklenecek -->
+                @RenderBody()
+
+            </main>
+
+            <footer class="footer">
+                ShopSync &copy; 2026 &mdash; Microservices E-Commerce Backend
+            </footer>
+        </div>
+    </div>
+
+    <!-- Sizin temanıza ait özel JS dosyası -->
+    <script src="~/theme/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+
+</body>
+</html>

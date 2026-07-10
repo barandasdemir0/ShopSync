@@ -86,6 +86,24 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+      
+  shopsync.web:
+    image: ${DOCKER_REGISTRY-}shopsyncweb
+    build:
+      context: .
+      dockerfile: ShopSync.Web/ShopSync.Web/ShopSync.Web/Dockerfile
+    container_name: shopsync-web
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ApiSettings__BaseUrl=http://shopsync.orderservice:5160
+    depends_on:
+      shopsync.orderservice:
+        condition: service_healthy
+    networks:
+      - shopsync-net
+    restart: unless-stopped
 
   # ============================================================
   # VERİTABANLARI

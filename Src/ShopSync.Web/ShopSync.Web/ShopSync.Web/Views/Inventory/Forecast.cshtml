@@ -1,0 +1,54 @@
+﻿@using ShopSync.Web.Dtos
+@model ForecastResponseDto
+
+@{
+    ViewData["Title"] = "Stok Tahmini";
+}
+
+<div class="card">
+    <div class="card-header">
+        Talep Tahmini
+        <span class="text-sm text-muted">GET /api/Inventory/forecast/{sku}</span>
+    </div>
+    <div class="card-body">
+        <form method="get" asp-action="Forecast">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="fc-sku">SKU Kodu</label>
+                    <input type="text" id="fc-sku" name="sku" class="form-input mono"
+                           placeholder="orn. ABC-123" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="fc-days">Gün Sayısı</label>
+                    <input type="number" id="fc-days" name="days" class="form-input"
+                           min="1" max="365" value="7">
+                    <div class="form-hint">Kaç günlük tahmin istediğiniz (varsayılan: 7)</div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-sm">Tahmin Hesapla</button>
+        </form>
+    </div>
+</div>
+
+@if (Model != null)
+{
+    <div class="card mt-lg">
+        <div class="card-header">Tahmin Sonucu</div>
+        <div class="card-body">
+            <div class="stats-grid">
+                <div class="stat-card info">
+                    <span class="stat-label">Tahmini Talep</span>
+                    <span class="stat-value">@Model.PredictedRequiredQuantity</span>
+                    <span class="stat-sub">@Context.Request.Query["days"] günlük</span>
+                </div>
+                <div class="stat-card primary">
+                    <span class="stat-label">SKU</span>
+                    <span class="stat-value text-mono" style="font-size:1.2rem;">@Model.Sku</span>
+                </div>
+            </div>
+            <div class="alert alert-info mt-md">
+                <strong>Not:</strong> @Model.Message
+            </div>
+        </div>
+    </div>
+}

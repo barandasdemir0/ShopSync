@@ -12,6 +12,8 @@ public sealed class GrpcExceptionInterceptor : Interceptor
         _logger = logger;
     }
 
+    //unary server handler, gRPC sunucusuna gelen tekli (unary) istekleri işleyen bir interceptor metodudur. Bu metod, gelen isteği işlerken oluşabilecek hataları yakalar ve uygun gRPC hata kodları ile istemciye iletir.
+    //unarynin amacı, istemciden gelen tek bir isteği alıp işlemek ve ardından tek bir yanıt döndürmektir. Bu, gRPC'nin temel iletişim modelidir ve genellikle CRUD işlemleri gibi basit istekler için kullanılır.
     public override async Task<TResponse> UnaryServerHandler<TRequest, TResponse>(TRequest request, ServerCallContext context, UnaryServerMethod<TRequest, TResponse> continuation)
     {
         try
@@ -40,8 +42,12 @@ public sealed class GrpcExceptionInterceptor : Interceptor
             // Adım adım Metadata oluşturma metadatanın amacı istemciye hatanın türünü ve detaylarını iletmektir. Bu, istemcinin hatayı daha iyi anlamasına ve uygun şekilde yanıt vermesine yardımcı olur.
             string metadataKey = "error-code"; 
             string metadataValue = ex.Code;
-            Metadata grpcMetadata = new Metadata(); // Metadata nesnesi oluşturuluyor
-            grpcMetadata.Add(metadataKey, metadataValue); // Metadata'ya hata kodu ekleniyor
+            Metadata grpcMetadata = new Metadata// Metadata nesnesi oluşturuluyor
+            {
+                { 
+                    metadataKey, metadataValue 
+                } // Metadata'ya hata kodu ekleniyor
+            }; 
 
             // Adım adım gRPC hatası oluşturma
             StatusCode statusCode = StatusCode.FailedPrecondition; // FailedPrecondition, istemcinin isteği yerine getirebilmesi için belirli bir ön koşulu sağlamadığını belirtir. Bu, iş kuralı ihlallerini temsil etmek için uygun bir durum kodudur.

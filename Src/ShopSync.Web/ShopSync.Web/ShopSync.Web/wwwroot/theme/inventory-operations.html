@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stok Islemleri — ShopSync</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">S</div>
+      <span>ShopSync</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">Genel</div>
+      <a href="index.html" class="sidebar-link"><span class="icon">&#9632;</span> Dashboard</a>
+      <div class="sidebar-section">Siparisler</div>
+      <a href="orders.html" class="sidebar-link"><span class="icon">&#9776;</span> Siparis Listesi</a>
+      <a href="order-create.html" class="sidebar-link"><span class="icon">&#43;</span> Yeni Siparis</a>
+      <a href="order-batch-cancel.html" class="sidebar-link"><span class="icon">&#10005;</span> Toplu Iptal</a>
+      <div class="sidebar-section">Envanter</div>
+      <a href="inventory.html" class="sidebar-link"><span class="icon">&#9881;</span> Envanter Listesi</a>
+      <a href="inventory-operations.html" class="sidebar-link active"><span class="icon">&#8644;</span> Stok Islemleri</a>
+      <a href="inventory-snapshot.html" class="sidebar-link"><span class="icon">&#128190;</span> Snapshot</a>
+      <a href="inventory-forecast.html" class="sidebar-link"><span class="icon">&#128200;</span> Stok Tahmini</a>
+      <div class="sidebar-section">Raporlama</div>
+      <a href="analytics.html" class="sidebar-link"><span class="icon">&#128202;</span> Analitik</a>
+    </nav>
+  </aside>
+  <div class="sidebar-overlay"></div>
+
+  <div class="main">
+    <header class="header">
+      <button class="hamburger" aria-label="Menu">&#9776;</button>
+      <h1 class="header-title">Stok Islemleri</h1>
+      <div class="header-actions">
+        <a href="inventory.html" class="btn btn-secondary btn-sm">&larr; Listeye Don</a>
+      </div>
+    </header>
+
+    <main class="content fade-in">
+      <!-- CSS Tabs -->
+      <input type="radio" name="tab" id="tab1" class="tab-radio" checked>
+      <label for="tab1" class="tab-label">Stok Artir/Azalt</label>
+
+      <input type="radio" name="tab" id="tab2" class="tab-radio">
+      <label for="tab2" class="tab-label">Stok Transfer</label>
+
+      <input type="radio" name="tab" id="tab3" class="tab-radio">
+      <label for="tab3" class="tab-label">Yeni Kalem Olustur</label>
+
+      <input type="radio" name="tab" id="tab4" class="tab-radio">
+      <label for="tab4" class="tab-label">Kalem Sil</label>
+
+      <div class="tab-panels">
+        <!-- Tab 1: Stok Artir/Azalt -->
+        <div class="tab-panel" data-panel="1">
+          <div class="card">
+            <div class="card-header">
+              Stok Artir veya Azalt
+              <span class="text-sm text-muted">POST /api/Inventory/stock/increase veya decrease</span>
+            </div>
+            <div class="card-body">
+              <form method="post" action="/Inventory/Operations">
+                <input type="hidden" name="operation" value="adjust">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label" for="adj-sku">SKU Kodu</label>
+                    <input type="text" id="adj-sku" name="sku" class="form-input mono" placeholder="orn. ABC-123" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="adj-qty">Miktar</label>
+                    <input type="number" id="adj-qty" name="quantity" class="form-input" min="1" placeholder="Pozitif: artir, Negatif: azalt" required>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label" for="adj-warehouse">Depo Kodu</label>
+                    <input type="text" id="adj-warehouse" name="warehouseCode" class="form-input" value="DEFAULT" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="adj-reason">Sebep</label>
+                    <input type="text" id="adj-reason" name="reason" class="form-input" placeholder="Islem sebebi" required>
+                  </div>
+                </div>
+                <div class="alert alert-info">
+                  <strong>Bilgi:</strong> Miktar alani pozitif ise stok artirilir, negatif ise azaltilir.
+                </div>
+                <button type="submit" class="btn btn-primary"
+                        onclick="return confirm('Stok islemi yapmak istediginize emin misiniz?')">Stok Islemini Uygula</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Stok Transfer -->
+        <div class="tab-panel" data-panel="2">
+          <div class="card">
+            <div class="card-header">
+              Stok Transfer (Rebalance)
+              <span class="text-sm text-muted">POST /api/Inventory/stock/rebalance</span>
+            </div>
+            <div class="card-body">
+              <form method="post" action="/Inventory/Operations">
+                <input type="hidden" name="operation" value="rebalance">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label" for="rb-sku">SKU Kodu</label>
+                    <input type="text" id="rb-sku" name="sku" class="form-input mono" placeholder="orn. ABC-123" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rb-qty">Miktar</label>
+                    <input type="number" id="rb-qty" name="quantity" class="form-input" min="1" placeholder="Transfer miktar" required>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label" for="rb-from">Kaynak Depo</label>
+                    <input type="text" id="rb-from" name="fromLocation" class="form-input" placeholder="WH-A" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rb-to">Hedef Depo</label>
+                    <input type="text" id="rb-to" name="toLocation" class="form-input" placeholder="WH-B" required>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="rb-reason">Sebep</label>
+                  <input type="text" id="rb-reason" name="reason" class="form-input" placeholder="Transfer sebebi" required>
+                </div>
+                <button type="submit" class="btn btn-primary"
+                        onclick="return confirm('Stok transferi yapmak istediginize emin misiniz?')">Transfer Uygula</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Yeni Kalem Olustur -->
+        <div class="tab-panel" data-panel="3">
+          <div class="card">
+            <div class="card-header">
+              Yeni Envanter Kalemi Olustur
+              <span class="text-sm text-muted">POST /api/Inventory/item</span>
+            </div>
+            <div class="card-body">
+              <form method="post" action="/Inventory/Operations">
+                <input type="hidden" name="operation" value="create-item">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label" for="new-sku">SKU Kodu</label>
+                    <input type="text" id="new-sku" name="sku" class="form-input mono" placeholder="orn. ABC-123" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="new-qty">Baslangic Miktari</label>
+                    <input type="number" id="new-qty" name="initialQuantity" class="form-input" min="0" placeholder="0" required>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label" for="new-warehouse">Depo Kodu</label>
+                    <input type="text" id="new-warehouse" name="warehouseCode" class="form-input" value="DEFAULT" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="new-threshold">Dusuk Stok Esigi</label>
+                    <input type="number" id="new-threshold" name="lowStockThreshold" class="form-input" min="0" value="10">
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-success"
+                        onclick="return confirm('Yeni envanter kalemi olusturmak istediginize emin misiniz?')">Kalem Olustur</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Kalem Sil -->
+        <div class="tab-panel" data-panel="4">
+          <div class="card">
+            <div class="card-header">
+              Envanter Kalemi Sil
+              <span class="text-sm text-muted">DELETE /api/Inventory/item/{warehouseCode}/{sku}</span>
+            </div>
+            <div class="card-body">
+              <form method="post" action="/Inventory/Operations">
+                <input type="hidden" name="operation" value="delete-item">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label" for="del-warehouse">Depo Kodu</label>
+                    <input type="text" id="del-warehouse" name="warehouseCode" class="form-input" placeholder="DEFAULT" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="del-sku">SKU Kodu</label>
+                    <input type="text" id="del-sku" name="sku" class="form-input mono" placeholder="orn. ABC-123" required>
+                  </div>
+                </div>
+                <div class="alert alert-danger">
+                  <strong>Dikkat:</strong> Bu islem geri alinamaz! Envanter kalemi kalici olarak silinecektir.
+                </div>
+                <button type="submit" class="btn btn-danger"
+                        onclick="return confirm('Bu envanter kalemini kalici olarak silmek istediginize emin misiniz?')">Kalemi Sil</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      ShopSync &copy; 2026 &mdash; Microservices E-Commerce Backend
+    </footer>
+  </div>
+</div>
+<script src="site.js"></script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Siparis Listesi — ShopSync</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">S</div>
+      <span>ShopSync</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">Genel</div>
+      <a href="index.html" class="sidebar-link"><span class="icon">&#9632;</span> Dashboard</a>
+      <div class="sidebar-section">Siparisler</div>
+      <a href="orders.html" class="sidebar-link active"><span class="icon">&#9776;</span> Siparis Listesi</a>
+      <a href="order-create.html" class="sidebar-link"><span class="icon">&#43;</span> Yeni Siparis</a>
+      <a href="order-batch-cancel.html" class="sidebar-link"><span class="icon">&#10005;</span> Toplu Iptal</a>
+      <div class="sidebar-section">Envanter</div>
+      <a href="inventory.html" class="sidebar-link"><span class="icon">&#9881;</span> Envanter Listesi</a>
+      <a href="inventory-operations.html" class="sidebar-link"><span class="icon">&#8644;</span> Stok Islemleri</a>
+      <a href="inventory-snapshot.html" class="sidebar-link"><span class="icon">&#128190;</span> Snapshot</a>
+      <a href="inventory-forecast.html" class="sidebar-link"><span class="icon">&#128200;</span> Stok Tahmini</a>
+      <div class="sidebar-section">Raporlama</div>
+      <a href="analytics.html" class="sidebar-link"><span class="icon">&#128202;</span> Analitik</a>
+    </nav>
+  </aside>
+  <div class="sidebar-overlay"></div>
+
+  <div class="main">
+    <header class="header">
+      <button class="hamburger" aria-label="Menu">&#9776;</button>
+      <h1 class="header-title">Siparis Listesi</h1>
+      <div class="header-actions">
+        <a href="order-create.html" class="btn btn-primary btn-sm">+ Yeni Siparis</a>
+      </div>
+    </header>
+
+    <main class="content fade-in">
+      <!-- Filtre Paneli -->
+      <div class="card mb-lg">
+        <div class="card-header">Filtrele</div>
+        <div class="card-body">
+          <form method="get" action="">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="status">Durum</label>
+                <select id="status" name="Status" class="form-select">
+                  <option value="">Tumu</option>
+                  <option value="PENDING">PENDING</option>
+                  <option value="CONFIRMED">CONFIRMED</option>
+                  <option value="CANCELLED">CANCELLED</option>
+                  <option value="EXPIRED">EXPIRED</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="from">Baslangic Tarihi</label>
+                <input type="date" id="from" name="From" class="form-input">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="to">Bitis Tarihi</label>
+                <input type="date" id="to" name="To" class="form-input">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="pageSize">Sayfa Basina</label>
+                <select id="pageSize" name="PageSize" class="form-select">
+                  <option value="10">10</option>
+                  <option value="20" selected>20</option>
+                  <option value="50">50</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex gap-sm mt-md">
+              <button type="submit" class="btn btn-primary">Filtrele</button>
+              <a href="orders.html" class="btn btn-secondary">Temizle</a>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Toplu Islem -->
+      <div class="alert alert-info" data-auto-dismiss>
+        <strong>Bilgi:</strong> Birden fazla siparis secmek icin tablodaki kutulari isaretleyin, sonra "Toplu Iptal" butonuna tiklayin.
+      </div>
+
+      <!-- Tablo -->
+      <div class="card">
+        <div class="card-header">
+          Siparisler
+          <span class="text-sm text-muted">GET /api/Order</span>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <div class="table-wrap table-responsive-mobile">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px;"><input type="checkbox" id="select-all"></th>
+                  <th>Siparis ID</th>
+                  <th>Durum</th>
+                  <th>Urun Sayisi</th>
+                  <th>Olusturma Tarihi</th>
+                  <th>Islem</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-label=""><input type="checkbox" name="orderIds" value=""></td>
+                  <td class="table-id" data-label="Siparis ID">—</td>
+                  <td data-label="Durum"><span class="badge badge-pending">PENDING</span></td>
+                  <td data-label="Urun Sayisi">—</td>
+                  <td data-label="Tarih" class="text-mono text-sm">—</td>
+                  <td data-label="Islem">
+                    <a href="order-detail.html" class="btn btn-ghost btn-sm">Detay</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" name="orderIds" value=""></td>
+                  <td class="table-id" data-label="Siparis ID">—</td>
+                  <td data-label="Durum"><span class="badge badge-confirmed">CONFIRMED</span></td>
+                  <td data-label="Urun Sayisi">—</td>
+                  <td data-label="Tarih" class="text-mono text-sm">—</td>
+                  <td data-label="Islem">
+                    <a href="order-detail.html" class="btn btn-ghost btn-sm">Detay</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" name="orderIds" value=""></td>
+                  <td class="table-id" data-label="Siparis ID">—</td>
+                  <td data-label="Durum"><span class="badge badge-cancelled">CANCELLED</span></td>
+                  <td data-label="Urun Sayisi">—</td>
+                  <td data-label="Tarih" class="text-mono text-sm">—</td>
+                  <td data-label="Islem">
+                    <a href="order-detail.html" class="btn btn-ghost btn-sm">Detay</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td data-label=""><input type="checkbox" name="orderIds" value=""></td>
+                  <td class="table-id" data-label="Siparis ID">—</td>
+                  <td data-label="Durum"><span class="badge badge-expired">EXPIRED</span></td>
+                  <td data-label="Urun Sayisi">—</td>
+                  <td data-label="Tarih" class="text-mono text-sm">—</td>
+                  <td data-label="Islem">
+                    <a href="order-detail.html" class="btn btn-ghost btn-sm">Detay</a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card-footer flex justify-between items-center">
+          <a href="order-batch-cancel.html" class="btn btn-danger btn-sm">Secili Iptal Et</a>
+          <div class="pagination">
+            <span class="disabled">&laquo;</span>
+            <span class="active">1</span>
+            <a href="#">2</a>
+            <a href="#">3</a>
+            <a href="#">&raquo;</a>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      ShopSync &copy; 2026 &mdash; Microservices E-Commerce Backend
+    </footer>
+  </div>
+</div>
+<script src="site.js"></script>
+</body>
+</html>

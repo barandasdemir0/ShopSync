@@ -16,11 +16,26 @@ public sealed partial class InventoryGrpcService
          request.Items.Count);
 
 
-        var warehouseOrder = new List<string>
+       
+        string primaryWarehouse;
+        // Eğer karşı taraf depo adını BOŞ gönderdiyse
+        if (string.IsNullOrWhiteSpace(request.PrimaryWarehouse))
         {
-            request.PrimaryWarehouse.Trim().ToUpperInvariant()
-        };
+            primaryWarehouse = "DEFAULT";
+        }
 
+        //Eğer karşı taraf bir depo adı gönderdiyse (Örn: " istanbul ")
+        else
+        {
+            // Boşlukları temizle ve BÜYÜK HARFE çevir
+            primaryWarehouse = request.PrimaryWarehouse.Trim().ToUpperInvariant();
+        }
+        // Bulduğumuz ana depoyu sıralama listesinin en başına ekliyoruz
+        var warehouseOrder = new List<string>
+            {
+                primaryWarehouse
+            };
+        // Sonra da yedek (fallback) depoları listenin devamına ekliyoruz
         warehouseOrder.AddRange(request.FallbackWarehouses.Select(x => x.Trim().ToUpperInvariant()));
 
 
@@ -34,7 +49,7 @@ public sealed partial class InventoryGrpcService
             })
             .ToList();
 
-
+        // SKU'ları ve miktarlarını tutacak bir rezervasyon planı oluştur
         var reservationPlan = new Dictionary<string, (InventoryItem Stock, int Quantity, string OriginalSku)>();
 
         //skuların tüm depolarda olup olmadığını kontrol et
@@ -51,10 +66,11 @@ public sealed partial class InventoryGrpcService
 
             await using var lockHandle = await _lockService.AcquireLocksAsync(
             lockKeys, cancellationToken: context.CancellationToken);
-            // Her SKU için en uygun depoyu bul
+
+            // Eğer lock alınamazsa, AcquireLocksAsync metodu TimeoutException fırlatır ve catch bloğuna düşer
             var failedItems = new List<FailedItem>();
 
-
+            // Her SKU için depo öncelik sırasına göre rezervasyon yapmaya çalış
             foreach (var item in consolidatedItems)
             {
                 var allWarehouses = await _repository.GetBySkuAllWarehousesAsync(
@@ -117,7 +133,7 @@ public sealed partial class InventoryGrpcService
                
             }
 
-            // Tüm SKU'lar için uygun depo bulundu → Transaction başlat
+            // Tüm SKU'lar için uygun depo bulundu  Transaction başlat
             using var session = await _dbContext.Client.StartSessionAsync(
                 cancellationToken: context.CancellationToken);
             session.StartTransaction();

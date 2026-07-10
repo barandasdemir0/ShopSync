@@ -10,6 +10,7 @@ public sealed partial class InventoryGrpcService
     {
         var normalizedSku = request.Sku.Trim().ToUpperInvariant();
 
+
         string normalizedWarehouse;
 
         if (string.IsNullOrWhiteSpace(request.WarehouseCode))
@@ -37,15 +38,18 @@ public sealed partial class InventoryGrpcService
 
         try
         {
+            // Kilitlenmesi gereken anahtarlar listesi oluşturulur. Bu örnekte sadece SKU kullanılıyor.
             var lockKeys = new List<string>
             {
-            normalizedSku
+                normalizedSku
             };
 
+            // Kilitler alınır. Eğer kilit alınamazsa TimeoutException fırlatılır.
             await using var lockHandle = await _lockService.AcquireLocksAsync(
                 lockKeys,
                 cancellationToken: context.CancellationToken);
 
+            // Envanter kalemi zaten mevcut mu kontrol edilir.
             var existingItem = await _repository.GetBySkuAndWarehouseAsync(
                 normalizedSku,
                 normalizedWarehouse,

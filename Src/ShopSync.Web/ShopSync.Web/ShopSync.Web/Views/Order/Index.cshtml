@@ -1,0 +1,100 @@
+﻿@model ShopSync.Web.Models.OrderIndexViewModel
+
+@{
+    ViewData["Title"] = "Sipariş Listesi";
+}
+
+<!-- Filtre -->
+<div class="card mb-lg">
+    <div class="card-header">Filtrele</div>
+    <div class="card-body">
+        <form method="get" asp-action="Index" class="form-inline">
+            <div class="form-group">
+                <label class="form-label">Durum</label>
+                <select name="Status" class="form-input" style="width:auto;">
+                    <option value="">Tümü</option>
+                    <option value="PENDING" selected="@(Model.StatusFilter == "PENDING")">PENDING</option>
+                    <option value="CONFIRMED" selected="@(Model.StatusFilter == "CONFIRMED")">CONFIRMED</option>
+                    <option value="CANCELLED" selected="@(Model.StatusFilter == "CANCELLED")">CANCELLED</option>
+                    <option value="EXPIRED" selected="@(Model.StatusFilter == "EXPIRED")">EXPIRED</option>
+                </select>
+            </div>
+            <input type="hidden" name="Page" value="1" />
+            <input type="hidden" name="PageSize" value="@Model.PageSize" />
+            <button type="submit" class="btn btn-primary btn-sm">Filtrele</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Sipariş Listesi
+        <a asp-action="Create" class="btn btn-primary btn-sm">+ Yeni Sipariş</a>
+    </div>
+    <div class="card-body" style="padding:0;">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Sipariş ID</th>
+                        <th>Durum</th>
+                        <th>Ürün Sayısı</th>
+                        <th>Tarih</th>
+                        <th>İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Orders.Any())
+                    {
+                        foreach (var order in Model.Orders)
+                        {
+                            <tr>
+                                <td class="table-id" data-label="Sipariş ID">@order.OrderId</td>
+                                <td data-label="Durum">
+                                    <span class="badge @Model.GetBadgeClass(order.Status)">@order.Status</span>
+                                </td>
+                                <td data-label="Ürün Sayısı">@order.Items.Count</td>
+                                <td data-label="Tarih" class="text-mono text-sm">@order.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                <td data-label="İşlem">
+                                    <a asp-action="Detail" asp-route-id="@order.OrderId" class="btn btn-ghost btn-sm">Detay</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="5" style="text-align:center; padding: 20px;">Hiç sipariş bulunamadı.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- SAYFALAMA -->
+        @if (Model.TotalPages > 1)
+        {
+            <div style="display:flex; justify-content:center; align-items:center; gap:8px; padding:16px;">
+                @if (Model.HasPreviousPage)
+                {
+                    <a asp-action="Index"
+                       asp-route-Page="@(Model.CurrentPage - 1)"
+                       asp-route-PageSize="@Model.PageSize"
+                       asp-route-Status="@Model.StatusFilter"
+                       class="btn btn-ghost btn-sm">&larr; Önceki</a>
+                }
+
+                <span class="text-sm text-muted">
+                    Sayfa @Model.CurrentPage / @Model.TotalPages (Toplam @Model.TotalCount sipariş)
+                </span>
+
+                @if (Model.HasNextPage)
+                {
+                    <a asp-action="Index"
+                       asp-route-Page="@(Model.CurrentPage + 1)"
+                       asp-route-PageSize="@Model.PageSize"
+                       asp-route-Status="@Model.StatusFilter"
+                       class="btn btn-ghost btn-sm">Sonraki &rarr;</a>
+                }
+            </div>
+        }
+    </div>
+</div>

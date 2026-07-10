@@ -34,21 +34,32 @@ public sealed partial class InventoryGrpcService
 
             // MongoDB'den stokları getir
             var allInventoryItems = await _repository.GetBySkusAsync(skus, context.CancellationToken);
+            // SKU'ları kontrol et ve rezervasyonları onaylamak için uygun stokları belirle 
             var confirmPlan = new Dictionary<string, InventoryItem>();
+            // Eksik SKU'ları  takip et
             var missingSkus = new List<string>();
+            // Yetersiz rezervasyonları takip et
             var insufficientSkus = new List<string>();
+
+
             foreach (var item in consolidatedItems)
             {
+                // SKU'ya karşılık gelen stokları bul
                 var stocksForSku = allInventoryItems
                     .Where(i => i.Sku.Trim().ToUpperInvariant() == item.NormalizedSku)
                     .ToList();
+
+                // Eğer SKU bulunamazsa, eksik SKU listesine ekle
                 if (stocksForSku.Count == 0)
                 {
                     missingSkus.Add(item.OriginalSku);
                     continue;
                 }
+
                 // Rezerve edilmiş miktarı karşılayan (siparişin beklediği depoyu) bul
                 var suitableStock = stocksForSku.FirstOrDefault(s => s.QuantityReserved >= item.TotalQuantity);
+                // Eğer uygun stok bulunursa, confirmPlan'e ekle, aksi takdirde yetersiz rezervasyon listesine ekle
+
                 if (suitableStock != null)
                 {
                     confirmPlan[item.NormalizedSku] = suitableStock;
@@ -102,7 +113,7 @@ public sealed partial class InventoryGrpcService
                       stock, session, context.CancellationToken);
 
 
-                    // InventoryTransactionType'a "Confirm" eklenmeli (Adım 15.4'te)
+                    // InventoryTransactionType'a "Confirm" eklenmeli
                     var log = new InventoryTransactionLog(
                         sku: requestedItem.OriginalSku,
                         transactionType: InventoryTransactionType.Confirm,
@@ -114,11 +125,14 @@ public sealed partial class InventoryGrpcService
                         orderId: request.OrderId,
                         reason: "ConfirmReservation");
 
+                    // Transaction log'u MongoDB'ye ekle
                     await _repository.AddTransactionLogAsync(
                       log, session, context.CancellationToken);
                 }
 
+                // Transaction'ı commit et 
                 await session.CommitTransactionAsync(context.CancellationToken);
+                // Prometheus metriğini artır
                 _metrics.ReservationsConfirmed.Add(1);
 
                 _logger.LogInformation(

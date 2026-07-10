@@ -1,0 +1,72 @@
+﻿@using ShopSync.Web.Dtos
+@model OrderAnalyticsResponseDto
+
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="stats-grid">
+    <div class="stat-card primary">
+        <span class="stat-label">Toplam Sipariş</span>
+        <span class="stat-value">@Model.TotalOrders</span>
+        <span class="stat-sub">Tüm durumlar</span>
+    </div>
+    <div class="stat-card warning">
+        <span class="stat-label">Bekleyen</span>
+        <span class="stat-value">@Model.PendingCount</span>
+        <span class="stat-sub">PENDING</span>
+    </div>
+    <div class="stat-card success">
+        <span class="stat-label">Onaylanan</span>
+        <span class="stat-value">@Model.ConfirmedCount</span>
+        <span class="stat-sub">CONFIRMED</span>
+    </div>
+    <div class="stat-card danger">
+        <span class="stat-label">İptal Edilen</span>
+        <span class="stat-value">@Model.CancelledCount</span>
+        <span class="stat-sub">CANCELLED</span>
+    </div>
+    <div class="stat-card info">
+        <span class="stat-label">Süre Dolumu</span>
+        <span class="stat-value">@Model.ExpiredCount</span>
+        <span class="stat-sub">EXPIRED</span>
+    </div>
+</div>
+
+<div class="grid-2 mt-lg">
+    <div class="card">
+        <div class="card-header">Hızlı İşlemler</div>
+        <div class="card-body">
+            <div class="flex flex-wrap gap-sm">
+                <a asp-controller="Order" asp-action="Create" class="btn btn-primary">+ Yeni Sipariş</a>
+                <a asp-controller="Inventory" asp-action="Operations" class="btn btn-secondary">Stok İşlemleri</a>
+                <a asp-controller="Inventory" asp-action="Snapshot" class="btn btn-secondary">Snapshot Al</a>
+                <a asp-controller="Analytics" asp-action="Index" class="btn btn-ghost">Analitik Rapor</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">Özet Oranlar</div>
+        <div class="card-body">
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="text-muted">Onay Oranı</span>
+                    <strong>@Model.ConfirmationRate.ToString("F1")%</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="text-muted">İptal Oranı</span>
+                    <strong>@Model.CancellationRate.ToString("F1")%</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="text-muted">Süre Dolum Oranı</span>
+                    <strong>@Model.ExpirationRate.ToString("F1")%</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="text-muted">Dead Letter</span>
+                    <strong>@Model.DeadLetterCount</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

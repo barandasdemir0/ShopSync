@@ -1,0 +1,84 @@
+﻿@using ShopSync.Web.Dtos
+@model BatchCancelResponseDto
+
+@{
+    ViewData["Title"] = "Toplu Sipariş İptali";
+}
+
+<div class="card">
+    <div class="card-header">
+        Toplu İptal Formu
+        <span class="text-sm text-muted">POST /api/Order/batch-cancel</span>
+    </div>
+    <div class="card-body">
+
+        <!-- Action belirtmeye gerek yok, aynı isimli metoda POST atar -->
+        <form method="post">
+            <div class="form-group">
+                <label class="form-label" for="orderIds">Sipariş ID'leri</label>
+                <!-- Textarea'nın 'name' özelliği Controller'daki parametre ile eşleşir -->
+                <textarea id="orderIds" name="orderIds" class="form-input mono" rows="5"
+                          placeholder="Her satıra veya virgülle ayırarak Sipariş ID girin..."
+                          required></textarea>
+                <div class="form-hint">Virgül veya satır başına bir Sipariş ID girin. En az bir ID zorunludur.</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="reason">İptal Sebebi (İsteğe Bağlı)</label>
+                <!-- Input'un 'name' özelliği Controller'daki parametre ile eşleşir -->
+                <input type="text" id="reason" name="reason" class="form-input"
+                       placeholder="Tüm siparişler için ortak iptal sebebi">
+            </div>
+
+            <div class="alert alert-warning" style="margin-bottom: 20px;">
+                <strong>Dikkat:</strong> Yalnızca PENDING durumundaki siparişler iptal edilebilir.
+                Diğer durumlardaki siparişler başarısız olur.
+            </div>
+
+            <button type="submit" class="btn btn-danger btn-lg"
+                    onclick="return confirm('Seçilen siparişleri iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz!')">
+                Seçili Siparişleri İptal Et
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- EĞER POST İŞLEMİ YAPILDIYSA VE MODEL DOLU DÖNDÜYSE SONUÇ TABLOSUNU GÖSTER -->
+@if (Model != null)
+{
+    <div class="card mt-lg" id="batch-result">
+        <div class="card-header">İşlem Sonucu Özeti</div>
+        <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Sipariş ID</th>
+                            <th>Durum</th>
+                            <th>Mesaj</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var result in Model.Results)
+                        {
+                            <tr>
+                                <td class="table-id" data-label="Sipariş ID">@result.OrderId</td>
+                                <td data-label="Durum">
+                                    @if (result.Success)
+                                    {
+                                        <span class="badge badge-confirmed">Başarılı</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-cancelled">Başarısız</span>
+                                    }
+                                </td>
+                                <td data-label="Mesaj">@result.Message</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

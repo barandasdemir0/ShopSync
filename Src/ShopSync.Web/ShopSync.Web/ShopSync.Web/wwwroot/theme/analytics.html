@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analitik — ShopSync</title>
+  <link rel="stylesheet" href="site.css">
+  <style>
+    .chart-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-lg);
+    }
+    @media (max-width: 768px) {
+      .chart-container { grid-template-columns: 1fr; }
+    }
+    .chart-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-sm);
+    }
+    .chart-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: var(--space-md);
+    }
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .metric-row:last-child { border-bottom: none; }
+    .metric-label { font-size: 0.88rem; color: var(--muted); }
+    .metric-value { font-weight: 700; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">S</div>
+      <span>ShopSync</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">Genel</div>
+      <a href="index.html" class="sidebar-link"><span class="icon">&#9632;</span> Dashboard</a>
+      <div class="sidebar-section">Siparisler</div>
+      <a href="orders.html" class="sidebar-link"><span class="icon">&#9776;</span> Siparis Listesi</a>
+      <a href="order-create.html" class="sidebar-link"><span class="icon">&#43;</span> Yeni Siparis</a>
+      <a href="order-batch-cancel.html" class="sidebar-link"><span class="icon">&#10005;</span> Toplu Iptal</a>
+      <div class="sidebar-section">Envanter</div>
+      <a href="inventory.html" class="sidebar-link"><span class="icon">&#9881;</span> Envanter Listesi</a>
+      <a href="inventory-operations.html" class="sidebar-link"><span class="icon">&#8644;</span> Stok Islemleri</a>
+      <a href="inventory-snapshot.html" class="sidebar-link"><span class="icon">&#128190;</span> Snapshot</a>
+      <a href="inventory-forecast.html" class="sidebar-link"><span class="icon">&#128200;</span> Stok Tahmini</a>
+      <div class="sidebar-section">Raporlama</div>
+      <a href="analytics.html" class="sidebar-link active"><span class="icon">&#128202;</span> Analitik</a>
+    </nav>
+  </aside>
+  <div class="sidebar-overlay"></div>
+
+  <div class="main">
+    <header class="header">
+      <button class="hamburger" aria-label="Menu">&#9776;</button>
+      <h1 class="header-title">Analitik Dashboard</h1>
+      <div class="header-actions">
+        <span class="text-sm text-muted">GET /api/Order/analytics</span>
+      </div>
+    </header>
+
+    <main class="content fade-in">
+      <!-- Tarih Filtresi -->
+      <div class="card mb-lg">
+        <div class="card-header">Tarih Araligi</div>
+        <div class="card-body">
+          <form method="get" action="" class="form-inline">
+            <div class="form-group">
+              <label class="form-label" for="an-from">Baslangic</label>
+              <input type="date" id="an-from" name="from" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="an-to">Bitis</label>
+              <input type="date" id="an-to" name="to" class="form-input">
+            </div>
+            <button type="submit" class="btn btn-primary">Filtrele</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Genel Metrikler -->
+      <div class="stats-grid mb-lg">
+        <div class="stat-card primary">
+          <span class="stat-label">Toplam Siparis</span>
+          <span class="stat-value" id="total-orders">—</span>
+        </div>
+        <div class="stat-card success">
+          <span class="stat-label">Onay Orani</span>
+          <span class="stat-value" id="confirm-rate">—%</span>
+        </div>
+        <div class="stat-card danger">
+          <span class="stat-label">Iptal Orani</span>
+          <span class="stat-value" id="cancel-rate">—%</span>
+        </div>
+        <div class="stat-card warning">
+          <span class="stat-label">Sure Dolum Orani</span>
+          <span class="stat-value" id="expire-rate">—%</span>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <!-- Durum Dagilimi (Bar Chart) -->
+        <div class="chart-box">
+          <div class="chart-title">Durum Dagilimi</div>
+          <div class="bar-chart">
+            <div class="bar-col">
+              <div class="bar-value">—</div>
+              <div class="bar" style="height:0%;background:var(--status-pending);"></div>
+              <div class="bar-label">PENDING</div>
+            </div>
+            <div class="bar-col">
+              <div class="bar-value">—</div>
+              <div class="bar" style="height:0%;background:var(--status-confirmed);"></div>
+              <div class="bar-label">CONFIRMED</div>
+            </div>
+            <div class="bar-col">
+              <div class="bar-value">—</div>
+              <div class="bar" style="height:0%;background:var(--status-cancelled);"></div>
+              <div class="bar-label">CANCELLED</div>
+            </div>
+            <div class="bar-col">
+              <div class="bar-value">—</div>
+              <div class="bar" style="height:0%;background:var(--status-expired);"></div>
+              <div class="bar-label">EXPIRED</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Oranlar (Pie Chart) -->
+        <div class="chart-box">
+          <div class="chart-title">Durum Oranlari</div>
+          <div class="flex items-center gap-lg" style="flex-wrap:wrap;">
+            <div class="pie-chart" id="pie-chart"
+                 style="background: conic-gradient(
+                   var(--status-confirmed) 0% 70%,
+                   var(--status-cancelled) 70% 85%,
+                   var(--status-pending) 85% 95%,
+                   var(--status-expired) 95% 100%
+                 );">
+            </div>
+            <div class="pie-legend">
+              <div class="pie-legend-item">
+                <div class="pie-legend-dot" style="background:var(--status-confirmed);"></div>
+                <span>Onaylanan <strong id="legend-confirmed">—%</strong></span>
+              </div>
+              <div class="pie-legend-item">
+                <div class="pie-legend-dot" style="background:var(--status-cancelled);"></div>
+                <span>Iptal Edilen <strong id="legend-cancelled">—%</strong></span>
+              </div>
+              <div class="pie-legend-item">
+                <div class="pie-legend-dot" style="background:var(--status-pending);"></div>
+                <span>Bekleyen <strong id="legend-pending">—%</strong></span>
+              </div>
+              <div class="pie-legend-item">
+                <div class="pie-legend-dot" style="background:var(--status-expired);"></div>
+                <span>Suresi Dolan <strong id="legend-expired">—%</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detay Metrikler -->
+      <div class="card mt-lg">
+        <div class="card-header">Detayli Metrikler</div>
+        <div class="card-body">
+          <div class="grid-2">
+            <div>
+              <div class="metric-row">
+                <span class="metric-label">Ortalama Onay Suresi</span>
+                <span class="metric-value" id="avg-confirm-time">—</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-label">Ortalama Iptal Suresi</span>
+                <span class="metric-value" id="avg-cancel-time">—</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-label">Ortalama Sure Dolum Suresi</span>
+                <span class="metric-value" id="avg-expire-time">—</span>
+              </div>
+            </div>
+            <div>
+              <div class="metric-row">
+                <span class="metric-label">Dead Letter Sayisi</span>
+                <span class="metric-value" id="dead-letter-count">—</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-label">En Yogun Saat</span>
+                <span class="metric-value" id="peak-time">—</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-label">Analiz Araligi</span>
+                <span class="metric-value text-sm text-mono" id="analysis-range">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-info mt-lg">
+        <strong>API Notu:</strong> Tum veriler <code class="text-mono">GET /api/Order/analytics</code> endpointinden gelir.
+        Tarih filtresi eklemek icin <code class="text-mono">?from=&to=</code> query parametrelerini kullanin.
+      </div>
+    </main>
+
+    <footer class="footer">
+      ShopSync &copy; 2026 &mdash; Microservices E-Commerce Backend
+    </footer>
+  </div>
+</div>
+<script src="site.js"></script>
+</body>
+</html>

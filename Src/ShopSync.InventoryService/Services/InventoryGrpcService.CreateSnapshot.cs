@@ -19,20 +19,22 @@ public sealed partial class InventoryGrpcService
         // Her bir InventoryItem'ı SnapshotItem'a dönüştür
         var snapshotItems = allItems.Select(item => new SnapshotItem
         {
-            Sku = item.Sku,
-            WarehouseCode = item.WarehouseCode,
-            QuantityAvailable = item.QuantityAvailable,
-            QuantityReserved = item.QuantityReserved,
-            LowStockThreshold = item.LowStockThreshold
+            Sku = item.Sku, // SKU'yu SnapshotItem'a kopyala
+            WarehouseCode = item.WarehouseCode, // Depo kodunu SnapshotItem'a kopyala 
+            QuantityAvailable = item.QuantityAvailable, // Stokta mevcut miktarı SnapshotItem'a kopyala
+            QuantityReserved = item.QuantityReserved, // Rezerve edilmiş miktarı SnapshotItem'a kopyala
+            LowStockThreshold = item.LowStockThreshold // Düşük stok eşiğini SnapshotItem'a kopyala
         }).ToList();
 
 
         // Snapshot oluştur ve kaydet
         var snapshot = new InventorySnapshot(request.Description, snapshotItems);
         await _repository.InsertSnapshotAsync(snapshot, context.CancellationToken);
+
         _logger.LogInformation(
             "Snapshot başarıyla oluşturuldu. ID: {Id}, Ürün sayısı: {Count}",
             snapshot.Id, snapshot.ItemCount);
+
         return new CreateSnapshotResponse
         {
             Success = true,

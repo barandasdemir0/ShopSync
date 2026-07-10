@@ -15,7 +15,7 @@ public sealed partial class InventoryGrpcService
 
         _logger.LogInformation(
             "RebalanceStock isteği. SKU: {Sku}, Miktar: {Qty}, " +
-            "Kaynak: {Source} → Hedef: {Target}, Sebep: {Reason}",
+            "Kaynak: {Source} -> Hedef: {Target}, Sebep: {Reason}",
             normalizedSku, request.Quantity,
             sourceWarehouse, targetWarehouse, request.Reason);
 
@@ -35,7 +35,11 @@ public sealed partial class InventoryGrpcService
         {
             // Her iki deponun SKU'su için kilit al.
             // Lock key'leri: "SKU:WAREHOUSE" formatında, alfabetik sırayla
-            var lockKeys = new[] { $"{normalizedSku}:{sourceWarehouse}", $"{normalizedSku}:{targetWarehouse}" };
+            var lockKeys = new[] 
+            { 
+                $"{normalizedSku}:{sourceWarehouse}", 
+                $"{normalizedSku}:{targetWarehouse}" 
+            };
 
             await using var lockHandle = await _lockService.AcquireLocksAsync(
               lockKeys, cancellationToken: context.CancellationToken);

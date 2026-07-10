@@ -1,0 +1,100 @@
+﻿@model InventoryIndexViewModel
+
+@{
+    ViewData["Title"] = "Stok Sorgula";
+}
+
+<div class="card">
+    <div class="card-header">
+        SKU ile Stok & Tahmin Sorgula
+        <span class="text-sm text-muted">GET /api/Inventory/stock/{sku} + forecast/{sku}</span>
+    </div>
+    <div class="card-body">
+        <form method="get" asp-action="Index">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">SKU Kodu</label>
+                    <input type="text" name="sku" class="form-input mono"
+                           placeholder="orn. SKU-001"
+                           value="@Context.Request.Query["sku"]" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tahmin Günü</label>
+                    <input type="number" name="days" class="form-input"
+                           min="1" max="365"
+                           value="@(Model?.Days ?? 7)">
+                    <div class="form-hint">Kaç günlük talep tahmini (varsayılan: 7)</div>
+                </div>
+                <div style="display:flex; align-items:flex-end;">
+                    <button type="submit" class="btn btn-primary">Sorgula</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model?.Stock != null && Model.Stock.Found)
+{
+    <!-- Mevcut Stok Durumu -->
+    <div class="stats-grid mt-lg">
+        <div class="stat-card primary">
+            <span class="stat-label">SKU</span>
+            <span class="stat-value text-mono" style="font-size:1.1rem;">@Model.Stock.Sku</span>
+        </div>
+        <div class="stat-card success">
+            <span class="stat-label">Mevcut Stok</span>
+            <span class="stat-value">@Model.Stock.AvailableQuantity</span>
+            <span class="stat-sub">Satışa açık</span>
+        </div>
+        <div class="stat-card warning">
+            <span class="stat-label">Rezerve Stok</span>
+            <span class="stat-value">@Model.Stock.ReservedQuantity</span>
+            <span class="stat-sub">Siparişlerde bekliyor</span>
+        </div>
+
+        <!-- Tahmin -->
+        @if (Model.Forecast != null && Model.Forecast.Success)
+        {
+            
+            var stokYeterli = Model.Stock.AvailableQuantity >= Model.Forecast.PredictedRequiredQuantity;
+            var forecastCard = stokYeterli ? "success" : "danger";
+            var forecastNote = stokYeterli ? "Stok yeterli ✓" : "⚠ Stok yetersiz kalabilir!";
+            <div class="stat-card @forecastCard">
+                <span class="stat-label">@Model.Days Günlük Tahmini Talep</span>
+                <span class="stat-value">@Model.Forecast.PredictedRequiredQuantity</span>
+                <span class="stat-sub">@forecastNote</span>
+            </div>
+        }
+    </div>
+
+    <!-- Detay Kartı -->
+    <div class="card mt-lg">
+        <div class="card-header">Analiz Özeti</div>
+        <div class="card-body">
+            <div class="metric-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);">
+                <span class="text-muted">Toplam Stok (Mevcut + Rezerve)</span>
+                <strong>@(Model.Stock.AvailableQuantity + Model.Stock.ReservedQuantity)</strong>
+            </div>
+            @if (Model.Forecast?.Success == true)
+            {
+                int fark = Model.Stock.AvailableQuantity - Model.Forecast.PredictedRequiredQuantity;
+                <div class="metric-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);">
+                    <span class="text-muted">@Model.Days Gün Sonrası Tahmini Kalan Stok</span>
+                    <strong style="color: @(fark >= 0 ? "var(--status-confirmed)" : "var(--status-cancelled)")">
+                        @fark adet
+                    </strong>
+                </div>
+                <div class="metric-row" style="display:flex; justify-content:space-between; padding:8px 0;">
+                    <span class="text-muted">Tahmin Mesajı</span>
+                    <span>@Model.Forecast.Message</span>
+                </div>
+            }
+        </div>
+    </div>
+}
+else if (Context.Request.Query.ContainsKey("sku") && (Model?.Stock == null || !Model.Stock.Found))
+{
+    <div class="alert alert-warning mt-lg">
+        Bu SKU'ya ait stok kaydı bulunamadı.
+    </div>
+}

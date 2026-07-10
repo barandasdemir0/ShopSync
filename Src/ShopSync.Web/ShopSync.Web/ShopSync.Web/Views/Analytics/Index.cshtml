@@ -1,0 +1,142 @@
+﻿@model ShopSync.Web.Models.AnalyticsViewModel
+
+@{
+    ViewData["Title"] = "Analitik Dashboard";
+}
+
+<!-- Tarih Filtresi -->
+<div class="card mb-lg">
+    <div class="card-header">Tarih Aralığı</div>
+    <div class="card-body">
+        <form method="get" asp-action="Index" class="form-inline">
+            <div class="form-group">
+                <label class="form-label" for="an-from">Başlangıç</label>
+                <input type="date" id="an-from" name="from" class="form-input" value="@Context.Request.Query["from"]">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="an-to">Bitiş</label>
+                <input type="date" id="an-to" name="to" class="form-input" value="@Context.Request.Query["to"]">
+            </div>
+            <button type="submit" class="btn btn-primary">Filtrele</button>
+        </form>
+    </div>
+</div>
+
+<!-- Genel Metrikler -->
+<div class="stats-grid mb-lg">
+    <div class="stat-card primary">
+        <span class="stat-label">Toplam Sipariş</span>
+        <span class="stat-value">@Model.Data.TotalOrders</span>
+    </div>
+    <div class="stat-card success">
+        <span class="stat-label">Onay Oranı</span>
+        <span class="stat-value">@Model.Data.ConfirmationRate.ToString("F1")%</span>
+    </div>
+    <div class="stat-card danger">
+        <span class="stat-label">İptal Oranı</span>
+        <span class="stat-value">@Model.Data.CancellationRate.ToString("F1")%</span>
+    </div>
+    <div class="stat-card warning">
+        <span class="stat-label">Süre Dolum Oranı</span>
+        <span class="stat-value">@Model.Data.ExpirationRate.ToString("F1")%</span>
+    </div>
+</div>
+
+<div class="chart-container">
+    <!-- Bar Chart -->
+    <div class="chart-box">
+        <div class="chart-title">Durum Dağılımı</div>
+        <div class="bar-chart">
+            <div class="bar-col">
+                <div class="bar-value">@Model.Data.PendingCount</div>
+                <div class="bar" style="height:@(Model.PendingH.ToString("F0"))%;background:var(--status-pending);"></div>
+                <div class="bar-label">PENDING</div>
+            </div>
+            <div class="bar-col">
+                <div class="bar-value">@Model.Data.ConfirmedCount</div>
+                <div class="bar" style="height:@(Model.ConfirmH.ToString("F0"))%;background:var(--status-confirmed);"></div>
+                <div class="bar-label">CONFIRMED</div>
+            </div>
+            <div class="bar-col">
+                <div class="bar-value">@Model.Data.CancelledCount</div>
+                <div class="bar" style="height:@(Model.CancelH.ToString("F0"))%;background:var(--status-cancelled);"></div>
+                <div class="bar-label">CANCELLED</div>
+            </div>
+            <div class="bar-col">
+                <div class="bar-value">@Model.Data.ExpiredCount</div>
+                <div class="bar" style="height:@(Model.ExpiredH.ToString("F0"))%;background:var(--status-expired);"></div>
+                <div class="bar-label">EXPIRED</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie Chart -->
+    <div class="chart-box">
+        <div class="chart-title">Durum Oranları</div>
+        <div class="flex items-center gap-lg" style="flex-wrap:wrap;">
+            <div class="pie-chart"
+                 style="background: conic-gradient(
+                var(--status-confirmed) 0% @(Model.ConfirmPct)%,
+                var(--status-cancelled) @(Model.ConfirmPct)% @(Model.ConfirmPct + Model.CancelPct)%,
+                var(--status-pending)   @(Model.ConfirmPct + Model.CancelPct)% @(Model.ConfirmPct + Model.CancelPct + Model.PendingPct)%,
+                var(--status-expired)   @(Model.ConfirmPct + Model.CancelPct + Model.PendingPct)% 100%
+                );">
+            </div>
+            <div class="pie-legend">
+                <div class="pie-legend-item">
+                    <div class="pie-legend-dot" style="background:var(--status-confirmed);"></div>
+                    <span>Onaylanan <strong>@(Model.ConfirmPct)%</strong></span>
+                </div>
+                <div class="pie-legend-item">
+                    <div class="pie-legend-dot" style="background:var(--status-cancelled);"></div>
+                    <span>İptal Edilen <strong>@(Model.CancelPct)%</strong></span>
+                </div>
+                <div class="pie-legend-item">
+                    <div class="pie-legend-dot" style="background:var(--status-pending);"></div>
+                    <span>Bekleyen <strong>@(Model.PendingPct)%</strong></span>
+                </div>
+                <div class="pie-legend-item">
+                    <div class="pie-legend-dot" style="background:var(--status-expired);"></div>
+                    <span>Süresi Dolan <strong>@(Model.ExpiredPct)%</strong></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detaylı Metrikler -->
+<div class="card mt-lg">
+    <div class="card-header">Detaylı Metrikler</div>
+    <div class="card-body">
+        <div class="grid-2">
+            <div>
+                <div class="metric-row">
+                    <span class="metric-label">Ortalama Onay Süresi</span>
+                    <span class="metric-value">@(TimeSpan.FromSeconds(Model.Data.AverageTimeToConfirmSeconds).ToString(@"hh\:mm\:ss"))</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Ortalama İptal Süresi</span>
+                    <span class="metric-value">@(TimeSpan.FromSeconds(Model.Data.AverageTimeToCancelSeconds).ToString(@"hh\:mm\:ss"))</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Ortalama Süre Dolum Süresi</span>
+                    <span class="metric-value">@(TimeSpan.FromSeconds(Model.Data.AverageTimeToExpireSeconds).ToString(@"hh\:mm\:ss"))</span>
+                </div>
+            </div>
+            <div>
+                <div class="metric-row">
+                    <span class="metric-label">Dead Letter Sayısı</span>
+                    <span class="metric-value">@Model.Data.DeadLetterCount</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">En Yoğun Saat</span>
+                    <span class="metric-value">@Model.Data.PeakReservationTime</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Analiz Aralığı</span>
+                    <span class="metric-value text-sm text-mono">@Model.Data.AnalyzedFrom.ToString("dd.MM.yyyy") — @Model.Data.AnalyzedTo.ToString("dd.MM.yyyy")</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -38,6 +38,6 @@ public sealed class MongoDbContext
     public IMongoCollection<InventorySnapshot> Snapshots
     => _database.GetCollection<InventorySnapshot>("inventory_snapshots");
 
-    //MongoDB Client nesnesini döner.
+    //MongoDB Client nesnesini döner. buna ihtiyaç duyulursa, örneğin transaction işlemleri için kullanılabilir.
     public IMongoClient Client => _client;
 }

@@ -1,0 +1,76 @@
+﻿@model ShopSync.Web.Models.OrderDetailViewModel
+
+@{
+    ViewData["Title"] = "Sipariş Detayı";
+}
+
+<div class="grid-2">
+    <!-- SOL KART: SİPARİŞ BİLGİLERİ -->
+    <div class="card">
+        <div class="card-header">Sipariş Özeti</div>
+        <div class="card-body">
+            <p><strong>Sipariş ID:</strong> <code class="text-mono">@Model.Order.OrderId</code></p>
+            <p><strong>Durum:</strong> <span class="badge @Model.BadgeClass">@Model.Order.Status</span></p>
+            <p><strong>Tarih:</strong> @Model.Order.CreatedAt.ToString("dd.MM.yyyy HH:mm")</p>
+        </div>
+    </div>
+
+    <!-- SAĞ KART: İŞLEMLER (SADECE PENDING İSE GÖSTERİLİR) -->
+    @if (Model.IsPending)
+    {
+        <div class="card">
+            <div class="card-header">Sipariş İşlemleri</div>
+            <div class="card-body">
+
+                <!-- ONAY FORMU -->
+                <form asp-action="Confirm" asp-route-id="@Model.Order.OrderId" method="post" style="margin-bottom: 15px;">
+                    <input type="text" name="note" class="form-input" placeholder="Onay notu (İsteğe bağlı)..." style="margin-bottom: 5px;" />
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Siparişi onaylamak istediğinize emin misiniz?');">Siparişi Onayla</button>
+                </form>
+
+                <!-- İPTAL FORMU -->
+                <form asp-action="Cancel" asp-route-id="@Model.Order.OrderId" method="post">
+                    <input type="text" name="reason" class="form-input" placeholder="İptal sebebi (Zorunlu)" required style="margin-bottom: 5px;" />
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Siparişi iptal etmek istediğinize emin misiniz?');">Siparişi İptal Et</button>
+                </form>
+
+                <!-- ADMIN OVERRIDE FORMU -->
+                <hr style="margin: 15px 0;" />
+                <form asp-action="AdminOverride" asp-route-id="@Model.Order.OrderId" method="post">
+                    <input type="text" name="reason" class="form-input" placeholder="Admin override sebebi (zorunlu)" required style="margin-bottom: 5px;" />
+                    <button type="submit" class="btn btn-warning"
+                            onclick="return confirm('Admin override uygulamak istediğinize emin misiniz?');">
+                        Admin Override
+                    </button>
+                </form>
+
+            </div>
+        </div>
+    }
+</div>
+
+<!-- ÜRÜN LİSTESİ TABLOSU -->
+<div class="card mt-lg">
+    <div class="card-header">Ürün Kalemleri</div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>SKU</th>
+                    <th>İstenen Miktar</th>
+                    <th>Rezerve Edilen</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Order.Items)
+                {
+                    <tr>
+                        <td class="text-mono">@item.Sku</td>
+                        <td>@item.RequestedQuantity</td>
+                        <td>@item.ReservedQuantity</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

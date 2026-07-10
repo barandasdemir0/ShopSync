@@ -43,7 +43,7 @@ public sealed class RedisDistributedLockService : IDistributedLockService
         // Anahtarlar temizlenir, boş veya null olanlar filtrelenir, büyük harfe çevrilir ve alfabetik sıralanır.
         var sortedKeys = keys
             .Where(k => !string.IsNullOrWhiteSpace(k))
-            .Select(k => $"lock:inventory:{k.Trim().ToUpperInvariant()}")
+            .Select(k => $"lock:inventory:{k.Trim().ToUpperInvariant()}") // Anahtarlar "lock:inventory:" öneki ile birleştirilir ve büyük harfe çevrilir.
             .Distinct()
             .OrderBy(k => k)
             .ToList();
@@ -60,7 +60,7 @@ public sealed class RedisDistributedLockService : IDistributedLockService
         // Kilit alınan anahtarları tutmak için bir liste oluşturulur.
         var acquiredLocks = new List<string>();
 
-        // 6. KİLİT SAHİPLİK KRONOMETRESİNİ BAŞLAT
+        // KİLİT SAHİPLİK KRONOMETRESİNİ BAŞLAT
         var holdStopwatch = Stopwatch.StartNew();
 
 
@@ -72,12 +72,13 @@ public sealed class RedisDistributedLockService : IDistributedLockService
             foreach (var key in sortedKeys)
             {
 
+                // Anahtarın SKU'su, "lock:inventory:" önekinden çıkarılarak elde edilir. ordinalIgnoreCase ile büyük/küçük harf duyarsız bir şekilde değiştirilir.
                 var sku = key.Replace("lock:inventory:", "", StringComparison.OrdinalIgnoreCase);
 
                 // Kilit alınamadığında tekrar denemek için bir değişken tanımlanır.
                 var acquired = false;
 
-                // 7. KİLİT BEKLEME SÜRESİ KRONOMETRESİNİ BAŞLAT
+                // KİLİT BEKLEME SÜRESİ KRONOMETRESİNİ BAŞLAT
                 var lockWaitStopwatch = Stopwatch.StartNew();
 
                 // Maksimum deneme sayısı kadar kilit almaya çalışılır.
@@ -88,13 +89,14 @@ public sealed class RedisDistributedLockService : IDistributedLockService
 
                     try
                     {
+                        //Redis üzerinde belirtilen anahtar için kilit almaya çalışmaktır. LockTakeAsync metodu, belirli bir anahtar (key) için kilit almayı dener. Eğer kilit alınabilirse true döner, aksi takdirde false döner. lockValue, kilidi alan işlemi tanımlayan benzersiz bir değerdir ve lockExpiry, kilidin ne kadar süreyle geçerli olacağını belirtir.
                         acquired = await _redisDb.LockTakeAsync(key, lockValue, lockExpiry);
 
 
                     }
                     catch (Exception)
                     {
-                        // 8. HATA DURUMUNDA CONTENTION METRİĞİNİ YAZ
+                        //HATA DURUMUNDA CONTENTION METRİĞİNİ YAZ
                         _lockMetrics.LockContention(sku);
                         throw;
                     }
@@ -108,14 +110,14 @@ public sealed class RedisDistributedLockService : IDistributedLockService
                         _logger.LogDebug("Kilit alındı: {Key}", key);
                         acquiredLocks.Add(key);
 
-                        // 9. KİLİT ALINDI METRİKLERİNİ KAYDET
+                        // KİLİT ALINDI METRİKLERİNİ KAYDET
                         lockWaitStopwatch.Stop();
                         _lockMetrics.RecordLockWait(lockWaitStopwatch.ElapsedMilliseconds, sku);
                         _lockMetrics.LockAcquired(sku);
                         break;
                     }
 
-                    // 10. TÜM DENEMELERE RAĞMEN ALINAMADIYSA TIMEOUT YAZ
+                    //TÜM DENEMELERE RAĞMEN ALINAMADIYSA TIMEOUT YAZ
                     if (retry == MaxRetries - 1)
                     {
                         lockWaitStopwatch.Stop();
@@ -148,21 +150,22 @@ public sealed class RedisDistributedLockService : IDistributedLockService
                 "Tüm kilitler başarıyla alındı. Kilit sayısı: {Count}",
                 acquiredLocks.Count);
 
+            // Kilitler başarıyla alındığında, RedisLockHandle nesnesi oluşturulur ve döndürülür. Bu nesne, kilitlerin serbest bırakılmasını yönetir.
             return new RedisLockHandle(
-             _redisDb,
-             acquiredLocks,
-             lockValue,
-             _logger,
-             _lockMetrics,
-             holdStopwatch);
+             _redisDb, // Redis veritabanı bağlantısı
+             acquiredLocks, // Alınan kilitlerin anahtarları
+             lockValue, // Kilit değeri (benzersiz GUID)
+             _logger, // Logger nesnesi
+             _lockMetrics, // Kilit metriklerini kaydetmek için kullanılan nesne
+             holdStopwatch); // Kilitlerin tutulma süresini ölçmek için kullanılan kronometre
         }
         catch
         {
             await RedisLockHandle.ReleaseAsync(
-                _redisDb,
-                acquiredLocks,
-                lockValue,
-                _logger);
+                _redisDb, // Redis veritabanı bağlantısı
+                acquiredLocks, // Alınan kilitlerin anahtarları
+                lockValue, // Kilit değeri (benzersiz GUID)
+                _logger); // Logger nesnesi
 
             throw;
         }

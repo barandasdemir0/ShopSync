@@ -18,7 +18,7 @@ public sealed partial class InventoryGrpcService
         try
         {
             await using var lockHandle = await _lockService.AcquireLocksAsync(
-              new[] 
+              new[]  // Kilitlenmesi gereken anahtarlar listesi
               { 
                   normalizedSku 
               },
@@ -35,6 +35,7 @@ public sealed partial class InventoryGrpcService
                 targetWarehouse = request.WarehouseCode;
             }
 
+            // Stok kaydını SKU ve depo koduna göre al
             var stock = await _repository.GetBySkuAndWarehouseAsync(
               normalizedSku, targetWarehouse, context.CancellationToken);
 
@@ -91,6 +92,7 @@ public sealed partial class InventoryGrpcService
             }
             catch (Exception ex)
             {
+                // Transaction sırasında bir hata oluşursa, işlemi geri al ve hatayı logla
                 await session.AbortTransactionAsync(context.CancellationToken);
                 _logger.LogError(ex,
                     "DecreaseStock transaction hatası. SKU: {Sku}", normalizedSku);

@@ -139,6 +139,7 @@ public sealed class InventoryRepository : IInventoryRepository
         {
             throw new ArgumentNullException(nameof(item));
         }
+        // MongoDB'de envanter öğesini ekle. müşteriler için sırasıyla kilit almak için session parametresi ile ekleme işlemi yapılır. Eğer session sağlanmamışsa, normal ekleme işlemi yapılır.
         if (session != null)
         {
             await _context.InventoryItems.InsertOneAsync(
@@ -146,6 +147,7 @@ public sealed class InventoryRepository : IInventoryRepository
                 item,
                 cancellationToken: ct);
         }
+        // Eğer oturum (session) sağlanmamışsa, normal ekleme işlemi yap. depo işlemleri için
         else
         {
             await _context.InventoryItems.InsertOneAsync(
@@ -200,7 +202,7 @@ public sealed class InventoryRepository : IInventoryRepository
                 x.OrderId != null &&
                 orderIds.Contains(x.OrderId) &&
                 completedTypes.Contains(x.TransactionType))
-            .Project(x => x.OrderId)
+            .Project(x => x.OrderId) // project parametresi, MongoDB sorgusunda sadece belirli alanları seçmek için kullanılır. Bu sayede, gereksiz veriler çekilmez ve performans artar. Burada sadece OrderId alanı seçiliyor.
             .ToListAsync(ct);
 
         return completedList
@@ -233,7 +235,7 @@ public sealed class InventoryRepository : IInventoryRepository
 
         //  sipariş ID'si için tamamlanmış transaction loglarının sayısını al.
         var count = await _context.TransactionLogs
-            .CountDocumentsAsync(
+            .CountDocumentsAsync( // countdocumentsAsync metodu, MongoDB'de belirli bir filtreye uyan belgelerin sayısını döndürür. Bu sayede, belirli bir sipariş ID'si için tamamlanmış transaction loglarının sayısını hızlıca alabiliriz.
            x => x.OrderId == orderId && completedTypes.Contains(x.TransactionType),
            cancellationToken: ct);
         return count > 0;
@@ -271,6 +273,7 @@ public sealed class InventoryRepository : IInventoryRepository
     {
         var normalizedSku = sku.Trim().ToUpperInvariant();
         var normalizedWarehouse = warehouseCode.Trim().ToUpperInvariant();
+
         return await _context.InventoryItems
             .Find(x => x.Sku == normalizedSku && x.WarehouseCode == normalizedWarehouse)
             .FirstOrDefaultAsync(ct);

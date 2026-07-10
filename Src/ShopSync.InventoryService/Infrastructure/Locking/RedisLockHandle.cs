@@ -17,9 +17,6 @@ internal sealed class RedisLockHandle : IAsyncDisposable
     private readonly Stopwatch _holdStopwatch;
     private bool _disposed;
 
-
-
-
     public RedisLockHandle(
         IDatabase db,
         IReadOnlyList<string> keys,
@@ -49,7 +46,9 @@ internal sealed class RedisLockHandle : IAsyncDisposable
         // Dispose işlemi başlatılıyor, kilidi serbest bırak.
         _disposed = true;
 
+        // Kilidi serbest bırakmadan önce geçen süreyi ölçmek için Stopwatch'ı durdur.
         _holdStopwatch.Stop();
+        // Kilidi tutma süresini milisaniye cinsinden al.
         var elapsedMs = _holdStopwatch.ElapsedMilliseconds;
 
         foreach (var key in _keys)

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — ShopSync</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">S</div>
+      <span>ShopSync</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">Genel</div>
+      <a href="index.html" class="sidebar-link active">
+        <span class="icon">&#9632;</span> Dashboard
+      </a>
+
+      <div class="sidebar-section">Siparisler</div>
+      <a href="orders.html" class="sidebar-link">
+        <span class="icon">&#9776;</span> Siparis Listesi
+      </a>
+      <a href="order-create.html" class="sidebar-link">
+        <span class="icon">&#43;</span> Yeni Siparis
+      </a>
+      <a href="order-batch-cancel.html" class="sidebar-link">
+        <span class="icon">&#10005;</span> Toplu Iptal
+      </a>
+
+      <div class="sidebar-section">Envanter</div>
+      <a href="inventory.html" class="sidebar-link">
+        <span class="icon">&#9881;</span> Envanter Listesi
+      </a>
+      <a href="inventory-operations.html" class="sidebar-link">
+        <span class="icon">&#8644;</span> Stok Islemleri
+      </a>
+      <a href="inventory-snapshot.html" class="sidebar-link">
+        <span class="icon">&#128190;</span> Snapshot
+      </a>
+      <a href="inventory-forecast.html" class="sidebar-link">
+        <span class="icon">&#128200;</span> Stok Tahmini
+      </a>
+
+      <div class="sidebar-section">Raporlama</div>
+      <a href="analytics.html" class="sidebar-link">
+        <span class="icon">&#128202;</span> Analitik
+      </a>
+    </nav>
+  </aside>
+
+  <div class="sidebar-overlay"></div>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="header">
+      <button class="hamburger" aria-label="Menu">&#9776;</button>
+      <h1 class="header-title">Dashboard</h1>
+      <div class="header-actions">
+        <span class="text-sm text-muted">API: localhost:5160</span>
+      </div>
+    </header>
+
+    <main class="content fade-in">
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card primary">
+          <span class="stat-label">Toplam Siparis</span>
+          <span class="stat-value">—</span>
+          <span class="stat-sub">Tum durumlar</span>
+        </div>
+        <div class="stat-card warning">
+          <span class="stat-label">Bekleyen</span>
+          <span class="stat-value">—</span>
+          <span class="stat-sub">PENDING</span>
+        </div>
+        <div class="stat-card success">
+          <span class="stat-label">Onaylanan</span>
+          <span class="stat-value">—</span>
+          <span class="stat-sub">CONFIRMED</span>
+        </div>
+        <div class="stat-card danger">
+          <span class="stat-label">Iptal Edilen</span>
+          <span class="stat-value">—</span>
+          <span class="stat-sub">CANCELLED</span>
+        </div>
+        <div class="stat-card info">
+          <span class="stat-label">Sure Dolumu</span>
+          <span class="stat-value">—</span>
+          <span class="stat-sub">EXPIRED</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Hizli Islemler -->
+        <div class="card">
+          <div class="card-header">Hizli Islemler</div>
+          <div class="card-body">
+            <div class="flex flex-wrap gap-sm">
+              <a href="order-create.html" class="btn btn-primary">+ Yeni Siparis</a>
+              <a href="inventory-operations.html" class="btn btn-secondary">Stok Islemleri</a>
+              <a href="inventory-snapshot.html" class="btn btn-secondary">Snapshot Al</a>
+              <a href="analytics.html" class="btn btn-ghost">Analitik Rapor</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dusuk Stok Uyarisi -->
+        <div class="card">
+          <div class="card-header">
+            Dusuk Stok Uyarilari
+            <span class="badge badge-pending">—</span>
+          </div>
+          <div class="card-body">
+            <div class="empty-state">
+              <div class="icon">&#9888;</div>
+              <p>Veri yukleniyor...<br>
+              <span class="text-sm text-muted">GET /api/Inventory/stock/{sku} ile sorgulanacak</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Son Siparisler -->
+      <div class="card mt-lg">
+        <div class="card-header">
+          Son Siparisler
+          <a href="orders.html" class="btn btn-ghost btn-sm">Tumunu Gor</a>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Siparis ID</th>
+                  <th>Durum</th>
+                  <th>Urun Sayisi</th>
+                  <th>Tarih</th>
+                  <th>Islem</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="table-id" data-label="Siparis ID">—</td>
+                  <td data-label="Durum"><span class="badge badge-pending">PENDING</span></td>
+                  <td data-label="Urun Sayisi">—</td>
+                  <td data-label="Tarih" class="text-mono text-sm">—</td>
+                  <td data-label="Islem"><a href="order-detail.html" class="btn btn-ghost btn-sm">Detay</a></td>
+                </tr>
+                <tr>
+                  <td class="table-id" data-label="Siparis ID">—</td>
+                  <td data-label="Durum"><span class="badge badge-confirmed">CONFIRMED</span></td>
+                  <td data-label="Urun Sayisi">—</td>
+                  <td data-label="Tarih" class="text-mono text-sm">—</td>
+                  <td data-label="Islem"><a href="order-detail.html" class="btn btn-ghost btn-sm">Detay</a></td>
+                </tr>
+                <tr>
+                  <td class="table-id" data-label="Siparis ID">—</td>
+                  <td data-label="Durum"><span class="badge badge-cancelled">CANCELLED</span></td>
+                  <td data-label="Urun Sayisi">—</td>
+                  <td data-label="Tarih" class="text-mono text-sm">—</td>
+                  <td data-label="Islem"><a href="order-detail.html" class="btn btn-ghost btn-sm">Detay</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding: var(--space-md); text-align:center;">
+            <span class="text-sm text-muted">Veriler GET /api/Order ile yuklenecek</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      ShopSync &copy; 2026 &mdash; Microservices E-Commerce Backend
+    </footer>
+  </div>
+</div>
+<script src="site.js"></script>
+</body>
+</html>

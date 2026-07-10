@@ -12,15 +12,19 @@ public sealed partial class InventoryGrpcService
     // ReleaseBatch metodu, birden fazla ürünün rezervasyonlarını serbest bırakmak için kullanılır.
     public override async Task<ReleaseBatchResponse> ReleaseBatch(ReleaseBatchRequest request, ServerCallContext context)
     {
+        // Redis anahtarını oluştur: release_guard:{orderId}
         var releaseGuardKey = $"release_guard:{request.OrderId}";
+        // Redis veritabanını al
         var db = _redis.GetDatabase();
 
         // SET NX ile atomic kontrol: Bu orderId için daha önce release yapılmış mı?
         var isFirstRelease = await db.StringSetAsync(
             releaseGuardKey,
-            DateTime.UtcNow.ToString("O"),
-            TimeSpan.FromHours(24),
-            When.NotExists);
+            DateTime.UtcNow.ToString("O"), // ISO 8601 formatında UTC zamanını sakla
+            TimeSpan.FromHours(24), // 24 saat boyunca geçerli olacak şekilde ayarla 
+            When.NotExists);// Eğer anahtar zaten varsa, bu istek duplicate release olarak kabul edilir
+
+
         if (!isFirstRelease)
         {
             _logger.LogWarning(
@@ -55,7 +59,7 @@ public sealed partial class InventoryGrpcService
 
 
 
-        // 1. İSTEKLERİ GRUPLA (AYNI SKU TEKRAR EDERSE MİKTARLARI TOPLA)
+        //  İSTEKLERİ GRUPLA AYNI SKU TEKRAR EDERSE MİKTARLARI TOPLA
         var consolidatedItems = request.Items
             .GroupBy(i => i.Sku.Trim().ToUpperInvariant())
             .Select(g => new
@@ -91,7 +95,7 @@ public sealed partial class InventoryGrpcService
                     continue;
                 }
 
-                // HANGİ DEPODA REZERVE EDİLDİĞİNİ BUL (İptal edilecek kadar rezervasyonu olan depo)
+                // HANGİ DEPODA REZERVE EDİLDİĞİNİ BUL İptal edilecek kadar rezervasyonu olan depo
                 var suitableStock = stocksForSku.FirstOrDefault(s => s.CanRelease(item.TotalQuantity));
                 if (suitableStock != null)
                 {

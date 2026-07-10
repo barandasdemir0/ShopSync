@@ -5,6 +5,7 @@ using ShopSync.OrderService.Models;
 
 namespace ShopSync.OrderService.Infrastructure.DeadLetter;
 
+//dead letter queue, işlenemeyen mesajları veya hatalı işlemleri geçici olarak saklamak için kullanılan bir yapıdır. Bu yapı, sistemin hata toleransını artırır ve hataların daha sonra incelenip çözülmesine olanak tanır. Dead letter queue, genellikle mesaj tabanlı sistemlerde veya mikro hizmet mimarilerinde kullanılır. İşlenemeyen mesajlar, belirli bir süre boyunca veya belirli bir sayıda yeniden deneme sonrasında dead letter queue'ya yönlendirilir. Bu sayede, sistemin diğer bölümleri etkilenmeden hatalar izole edilir ve yönetilebilir hale gelir.
 public sealed class DeadLetterService : IDeadLetterService
 {
     private readonly MongoDbContext _context;

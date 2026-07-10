@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Siparis Detay — ShopSync</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">S</div>
+      <span>ShopSync</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">Genel</div>
+      <a href="index.html" class="sidebar-link"><span class="icon">&#9632;</span> Dashboard</a>
+      <div class="sidebar-section">Siparisler</div>
+      <a href="orders.html" class="sidebar-link active"><span class="icon">&#9776;</span> Siparis Listesi</a>
+      <a href="order-create.html" class="sidebar-link"><span class="icon">&#43;</span> Yeni Siparis</a>
+      <a href="order-batch-cancel.html" class="sidebar-link"><span class="icon">&#10005;</span> Toplu Iptal</a>
+      <div class="sidebar-section">Envanter</div>
+      <a href="inventory.html" class="sidebar-link"><span class="icon">&#9881;</span> Envanter Listesi</a>
+      <a href="inventory-operations.html" class="sidebar-link"><span class="icon">&#8644;</span> Stok Islemleri</a>
+      <a href="inventory-snapshot.html" class="sidebar-link"><span class="icon">&#128190;</span> Snapshot</a>
+      <a href="inventory-forecast.html" class="sidebar-link"><span class="icon">&#128200;</span> Stok Tahmini</a>
+      <div class="sidebar-section">Raporlama</div>
+      <a href="analytics.html" class="sidebar-link"><span class="icon">&#128202;</span> Analitik</a>
+    </nav>
+  </aside>
+  <div class="sidebar-overlay"></div>
+
+  <div class="main">
+    <header class="header">
+      <button class="hamburger" aria-label="Menu">&#9776;</button>
+      <h1 class="header-title">Siparis Detay</h1>
+      <div class="header-actions">
+        <a href="orders.html" class="btn btn-secondary btn-sm">&larr; Listeye Don</a>
+      </div>
+    </header>
+
+    <main class="content fade-in">
+      <!-- Siparis Baslik -->
+      <div class="card mb-lg">
+        <div class="card-header">
+          <div>
+            <span class="text-mono font-bold" style="font-size:1.1rem;">—</span>
+            <span class="badge badge-pending" style="margin-left:var(--space-sm);">PENDING</span>
+          </div>
+          <span class="text-sm text-muted">GET /api/Order/{orderId}</span>
+        </div>
+        <div class="card-body">
+          <div class="grid-3">
+            <div>
+              <div class="text-sm text-muted mb-sm">Siparis ID</div>
+              <div class="text-mono">—</div>
+            </div>
+            <div>
+              <div class="text-sm text-muted mb-sm">Idempotency Key</div>
+              <div class="text-mono text-sm">—</div>
+            </div>
+            <div>
+              <div class="text-sm text-muted mb-sm">Tarih</div>
+              <div class="text-mono text-sm">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Urun Listesi -->
+        <div class="card">
+          <div class="card-header">Urunler</div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Istenen</th>
+                    <th>Rezerve</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="table-id" data-label="SKU">—</td>
+                    <td data-label="Istenen Miktar">—</td>
+                    <td data-label="Rezerve Edilen">—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Durum Gecmisi -->
+        <div class="card">
+          <div class="card-header">Durum Gecmisi</div>
+          <div class="card-body">
+            <div class="timeline">
+              <div class="timeline-item pending">
+                <div class="timeline-status">PENDING</div>
+                <div class="timeline-time">—</div>
+                <div class="timeline-reason">Siparis olusturuldu</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Islem Butonlari -->
+      <div class="card mt-lg">
+        <div class="card-header">Siparis Islemleri</div>
+        <div class="card-body">
+          <div class="flex flex-wrap gap-sm">
+            <!-- Onayla (PENDING durumunda) -->
+            <form method="post" action="/Order/{orderId}/confirm" style="display:inline;">
+              <input type="hidden" name="orderId" value="">
+              <div class="form-group">
+                <label class="form-label" for="confirmNote">Onay Notu (Optional)</label>
+                <input type="text" id="confirmNote" name="note" class="form-input" placeholder="Onay notu (opsiyonel)">
+              </div>
+              <button type="submit" class="btn btn-success"
+                      onclick="return confirm('Siparisi onaylamak istediginize emin misiniz?')">Onayla</button>
+            </form>
+
+            <!-- Iptal Et (PENDING durumunda) -->
+            <form method="post" action="/Order/{orderId}/cancel" style="display:inline;">
+              <input type="hidden" name="orderId" value="">
+              <div class="form-group">
+                <label class="form-label" for="cancelReason">Iptal Sebebi (Optional)</label>
+                <input type="text" id="cancelReason" name="reason" class="form-input" placeholder="Iptal sebebi (opsiyonel)">
+              </div>
+              <button type="submit" class="btn btn-danger"
+                      onclick="return confirm('Siparisi iptal etmek istediginize emin misiniz?')">Iptal Et</button>
+            </form>
+
+            <!-- Admin Override (EXPIRED durumunda) -->
+            <form method="post" action="/Order/{orderId}/admin-override" style="display:inline;">
+              <input type="hidden" name="orderId" value="">
+              <div class="form-group">
+                <label class="form-label" for="overrideReason">Admin Override Sebebi (Required)</label>
+                <input type="text" id="overrideReason" name="reason" class="form-input" placeholder="Zorunlu sebep" required>
+              </div>
+              <button type="submit" class="btn btn-warning"
+                      onclick="return confirm('Admin override ile siparisi iptal etmek istediginize emin misiniz?')">Admin Override</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      ShopSync &copy; 2026 &mdash; Microservices E-Commerce Backend
+    </footer>
+  </div>
+</div>
+<script src="site.js"></script>
+</body>
+</html>
